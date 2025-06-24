@@ -1,2 +1,3 @@
 Timestamp,SKU,Old_Price,New_Price,Change_Amount,Change_Percent,User_Notes,Status
 2025-06-24T17:39:25.271777,SKU12345,$99.99,$94.99,$-5.00,-5.0%,Test,approved_pending_implementation
+2025-06-24T17:55:54.765166,SKU12345,$99.99,$104.99,$+5.00,+5.0%,n,approved_pending_implementation
