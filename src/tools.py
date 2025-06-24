@@ -96,55 +96,63 @@ class ProductDataRetriever:
             # Return mock data when ChromaDB is not available
             return self._get_mock_product_data(query)
         
-        docs = self.vectorstore.similarity_search(query, k=k)
-        products = []
-        
-        for doc in docs:
-            if doc.metadata.get("type") == "product_info":
-                # Parse the document content to extract product info
-                content = doc.page_content
-                sku = doc.metadata.get("sku", "")
+        try:
+            docs = self.vectorstore.similarity_search(query, k=k)
+            products = []
+            
+            for doc in docs:
+                if doc.metadata.get("type") == "product_info":
+                    # Parse the document content to extract product info
+                    content = doc.page_content
+                    sku = doc.metadata.get("sku", "")
+                    
+                    # Extract price, cost, stock from content
+                    try:
+                        current_price = float(content.split("current_price=")[1].split()[0])
+                        cost = float(content.split("cost=")[1].split()[0])
+                        stock = int(content.split("stock=")[1].split()[0])
+                        
+                        # Extract product name and category
+                        parts = content.split()
+                        name = " ".join(parts[1:3])  # Simplified name extraction
+                        category = doc.metadata.get("category", "")
+                        
+                        product = ProductInfo(
+                            sku=sku,
+                            name=name,
+                            category=category,
+                            current_price=current_price,
+                            cost=cost,
+                            stock_level=stock
+                        )
+                        products.append(product)
+                    except (ValueError, IndexError) as e:
+                        print(f"Error parsing product data: {e}")
+                        continue
+            
+            # If no products found from vector search, fallback to mock data
+            if not products:
+                return self._get_mock_product_data(query)
                 
-                # Extract price, cost, stock from content
-                try:
-                    current_price = float(content.split("current_price=")[1].split()[0])
-                    cost = float(content.split("cost=")[1].split()[0])
-                    stock = int(content.split("stock=")[1].split()[0])
-                    
-                    # Extract product name and category
-                    parts = content.split()
-                    name = " ".join(parts[1:3])  # Simplified name extraction
-                    category = doc.metadata.get("category", "")
-                    
-                    product = ProductInfo(
-                        sku=sku,
-                        name=name,
-                        category=category,
-                        current_price=current_price,
-                        cost=cost,
-                        stock_level=stock
-                    )
-                    products.append(product)
-                except (ValueError, IndexError) as e:
-                    print(f"Error parsing product data: {e}")
-                    continue
-        
-        return products
+            return products
+        except Exception as e:
+            print(f"Error in vector search, using mock data: {e}")
+            return self._get_mock_product_data(query)
     
     def _get_mock_product_data(self, query: str) -> List[ProductInfo]:
         """Return mock product data when ChromaDB is not available"""
         mock_products = [
             ProductInfo(
                 sku="SKU12345",
-                name="Wireless Bluetooth Headphones",
+                name="Wireless Bluetooth Headphones - Premium Audio",
                 category="Electronics",
                 current_price=99.99,
                 cost=45.00,
                 stock_level=150
             ),
             ProductInfo(
-                sku="SKU67890",
-                name="Running Shoes",
+                sku="SKU67890", 
+                name="Athletic Running Shoes - Performance Series",
                 category="Sports",
                 current_price=129.99,
                 cost=65.00,
@@ -152,11 +160,35 @@ class ProductDataRetriever:
             ),
             ProductInfo(
                 sku="SKU54321",
-                name="Coffee Maker",
-                category="Appliances",
+                name="Premium Coffee Maker - 12-Cup Programmable",
+                category="Appliances", 
                 current_price=79.99,
                 cost=40.00,
                 stock_level=30
+            ),
+            ProductInfo(
+                sku="SKU11111",
+                name="Smart Watch - Fitness Tracker",
+                category="Electronics",
+                current_price=199.99,
+                cost=85.00,
+                stock_level=200
+            ),
+            ProductInfo(
+                sku="SKU22222",
+                name="Yoga Mat - Professional Grade",
+                category="Sports",
+                current_price=49.99,
+                cost=18.00,
+                stock_level=120
+            ),
+            ProductInfo(
+                sku="SKU33333",
+                name="Blender - High Performance 1200W",
+                category="Appliances",
+                current_price=149.99,
+                cost=75.00,
+                stock_level=45
             )
         ]
         
@@ -206,11 +238,11 @@ class ProductDataRetriever:
     def _get_mock_competitor_data(self, sku: str) -> List[CompetitorPrice]:
         """Return mock competitor data when ChromaDB is not available"""
         mock_competitor_data = {
-            "SKU12345": [
+            "SKU12345": [  # Wireless Headphones
                 CompetitorPrice(
                     competitor_name="Amazon",
                     product_match_confidence=0.95,
-                    price=89.99,
+                    price=89.99,  # Black Friday special
                     last_updated=datetime.now() - timedelta(hours=2)
                 ),
                 CompetitorPrice(
@@ -218,11 +250,17 @@ class ProductDataRetriever:
                     product_match_confidence=0.92,
                     price=94.99,
                     last_updated=datetime.now() - timedelta(hours=1)
+                ),
+                CompetitorPrice(
+                    competitor_name="B&H Photo",
+                    product_match_confidence=0.89,
+                    price=97.50,
+                    last_updated=datetime.now() - timedelta(hours=4)
                 )
             ],
-            "SKU67890": [
+            "SKU67890": [  # Running Shoes
                 CompetitorPrice(
-                    competitor_name="Nike",
+                    competitor_name="Nike Store",
                     product_match_confidence=0.88,
                     price=139.99,
                     last_updated=datetime.now() - timedelta(hours=3)
@@ -230,15 +268,21 @@ class ProductDataRetriever:
                 CompetitorPrice(
                     competitor_name="Adidas",
                     product_match_confidence=0.85,
-                    price=124.99,
+                    price=124.99,  # Competitive pricing
                     last_updated=datetime.now() - timedelta(hours=5)
+                ),
+                CompetitorPrice(
+                    competitor_name="Dick's Sporting Goods",
+                    product_match_confidence=0.82,
+                    price=134.99,
+                    last_updated=datetime.now() - timedelta(hours=8)
                 )
             ],
-            "SKU54321": [
+            "SKU54321": [  # Coffee Maker
                 CompetitorPrice(
                     competitor_name="Walmart",
                     product_match_confidence=0.93,
-                    price=74.99,
+                    price=74.99,  # Aggressive pricing
                     last_updated=datetime.now() - timedelta(hours=4)
                 ),
                 CompetitorPrice(
@@ -246,6 +290,72 @@ class ProductDataRetriever:
                     product_match_confidence=0.90,
                     price=82.99,
                     last_updated=datetime.now() - timedelta(hours=6)
+                ),
+                CompetitorPrice(
+                    competitor_name="Bed Bath & Beyond",
+                    product_match_confidence=0.87,
+                    price=89.99,
+                    last_updated=datetime.now() - timedelta(hours=12)
+                )
+            ],
+            "SKU11111": [  # Smart Watch
+                CompetitorPrice(
+                    competitor_name="Apple Store",
+                    product_match_confidence=0.91,
+                    price=249.99,
+                    last_updated=datetime.now() - timedelta(hours=1)
+                ),
+                CompetitorPrice(
+                    competitor_name="Samsung",
+                    product_match_confidence=0.88,
+                    price=189.99,
+                    last_updated=datetime.now() - timedelta(hours=3)
+                ),
+                CompetitorPrice(
+                    competitor_name="Amazon",
+                    product_match_confidence=0.93,
+                    price=195.00,
+                    last_updated=datetime.now() - timedelta(hours=2)
+                )
+            ],
+            "SKU22222": [  # Yoga Mat
+                CompetitorPrice(
+                    competitor_name="Lululemon",
+                    product_match_confidence=0.85,
+                    price=68.00,
+                    last_updated=datetime.now() - timedelta(hours=6)
+                ),
+                CompetitorPrice(
+                    competitor_name="Gaiam",
+                    product_match_confidence=0.90,
+                    price=45.99,
+                    last_updated=datetime.now() - timedelta(hours=4)
+                ),
+                CompetitorPrice(
+                    competitor_name="Amazon",
+                    product_match_confidence=0.87,
+                    price=39.99,
+                    last_updated=datetime.now() - timedelta(hours=2)
+                )
+            ],
+            "SKU33333": [  # Blender
+                CompetitorPrice(
+                    competitor_name="Williams Sonoma",
+                    product_match_confidence=0.89,
+                    price=179.99,
+                    last_updated=datetime.now() - timedelta(hours=8)
+                ),
+                CompetitorPrice(
+                    competitor_name="Target",
+                    product_match_confidence=0.92,
+                    price=139.99,
+                    last_updated=datetime.now() - timedelta(hours=5)
+                ),
+                CompetitorPrice(
+                    competitor_name="Amazon",
+                    product_match_confidence=0.94,
+                    price=134.95,
+                    last_updated=datetime.now() - timedelta(hours=1)
                 )
             ]
         }
@@ -359,19 +469,76 @@ class SalesDataRetriever:
     
     def get_sales_data(self, sku: str, days: int = 30) -> SalesData:
         """Get historical sales data for a product"""
-        # Simulate sales data - in real implementation, this would query a database
-        base_volume = random.randint(50, 200)
+        # Realistic sales patterns by product type
+        sales_profiles = {
+            "SKU12345": {  # Wireless Headphones - Electronics
+                "base_volume": 25,  # units per day
+                "seasonality": 1.2,  # Holiday boost
+                "trend": 0.95,  # Slightly declining
+                "price": 99.99
+            },
+            "SKU67890": {  # Running Shoes - Sports
+                "base_volume": 12,  # units per day
+                "seasonality": 0.8,  # End of summer decline
+                "trend": 0.85,  # Declining trend
+                "price": 129.99
+            },
+            "SKU54321": {  # Coffee Maker - Appliances
+                "base_volume": 8,   # units per day
+                "seasonality": 1.1,  # Morning routine boost
+                "trend": 1.05,  # Growing slightly
+                "price": 79.99
+            },
+            "SKU11111": {  # Smart Watch - Electronics
+                "base_volume": 35,  # units per day
+                "seasonality": 1.3,  # Strong holiday demand
+                "trend": 1.1,   # Growing trend
+                "price": 199.99
+            },
+            "SKU22222": {  # Yoga Mat - Sports
+                "base_volume": 18,  # units per day
+                "seasonality": 1.15, # New Year fitness resolutions
+                "trend": 1.0,   # Stable
+                "price": 49.99
+            },
+            "SKU33333": {  # Blender - Appliances
+                "base_volume": 15,  # units per day
+                "seasonality": 1.25, # Health trends
+                "trend": 1.08,  # Growing trend
+                "price": 149.99
+            }
+        }
         
-        # Generate daily sales with some variance
+        # Get profile or use default
+        profile = sales_profiles.get(sku, {
+            "base_volume": random.randint(8, 25),
+            "seasonality": random.uniform(0.8, 1.3),
+            "trend": random.uniform(0.9, 1.1), 
+            "price": random.uniform(50, 200)
+        })
+        
+        # Generate daily sales with realistic patterns
         total_units = 0
-        for _ in range(days):
-            daily_variance = random.uniform(0.8, 1.2)  # ±20% variance
-            daily_sales = max(0, int(base_volume * daily_variance))
+        base_volume = profile["base_volume"]
+        
+        for day in range(days):
+            # Weekly pattern (lower weekends for some products)
+            weekly_factor = 1.0
+            if (day % 7) in [5, 6]:  # Weekend
+                weekly_factor = 0.85 if sku in ["SKU54321", "SKU33333"] else 1.15
+                
+            # Declining trend over time for clearance items
+            trend_factor = profile["trend"] ** (day / 30)
+            
+            # Random daily variance
+            daily_variance = random.uniform(0.7, 1.4)
+            
+            # Calculate daily sales
+            daily_sales = max(0, int(base_volume * profile["seasonality"] * 
+                                   trend_factor * weekly_factor * daily_variance))
             total_units += daily_sales
         
-        # Simulate price for revenue calculation
-        avg_price = random.uniform(50, 150)
-        total_revenue = total_units * avg_price
+        total_revenue = total_units * profile["price"]
         
         return SalesData(
             sku=sku,
