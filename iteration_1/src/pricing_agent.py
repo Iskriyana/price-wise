@@ -465,11 +465,12 @@ class EnhancedPricingRAGAgent:
 
     def _create_system_prompt(self) -> str:
         """Create system prompt for LLM"""
-        return """You are an expert pricing analyst AI assistant helping with retail pricing decisions. 
+        return 
+        """You are an expert pricing analyst AI assistant helping with retail pricing decisions. 
         
         Your role is to:
         - Analyze product pricing data and market conditions
-        - Provide data-driven pricing recommendations
+         - Provide data-driven pricing recommendations with the goal of maximising revenue
         - Consider competitive positioning and profit margins
         - Account for inventory levels and sales velocity
         - Assess risks and business impact
