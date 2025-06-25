@@ -1,0 +1,39 @@
+📄Getting Started: Capstone Guidelines
+Lesson 2
+Collaboration & Roles
+Your final deliverable is a presentation showcasing your design, iterations, and (optionally) your build. Collaboration is key. Use the shared scratchpad (will be provided as a Google doc) as your workspace.
+During the first 5 minutes of brainstorming, decide who takes on which roles—though you’re free to contribute across areas as needed:
+●	Writer/Designer: Documents ideas and designs the solution.
+●	Researcher: Gathers best practices and optimization strategies.
+●	Brainstormers/Strategy Heads: Shape the approach and plan iterations.
+●	Builder/Engineer (Optional): Implements and tests the system.
+●	Presenters: Deliver the final demo.
+As always, you're free to use AI assistance as long as you understand the problem and main ideas.
+These guidelines apply to all iterations and do not require responses—use them as a framework for structuring your approach.
+1.	Design Your Solution
+●	Use your Canva poster template or exalidraw (or any diagramming tool) to create a high-level architecture diagram and share your design.
+●	Identify what types of data might be needed—consider both inputs and outputs relevant to your use case.
+●	Bonus: If you find a real dataset online that aligns with your use case, include it in your discussion and try to include it in your implementation for deeper insights.
+2.	Define the Specifics of Your Design
+●	Answer the iteration-specific design questions provided in the assignment.
+●	Justify your choices based on practicality, efficiency, and alignment with course concepts.
+3.	Establish Evaluation Metrics (From Lesson 7 in this module)
+●	What evaluation metrics will you use, and why?
+●	Provide a brief explanation of your choices—how do these metrics help assess performance meaningfully?
+4.	Consider Optimizations (From Lessons 3-5)
+●	Based on your use case, are there any potential optimizations that could improve performance?
+●	If your use case needs to be run first before considering optimizations, mention it explicitly—some decisions require data-driven insights.
+5.	Perform Cost, Latency & Effort Analysis (From Lessons 3-5 for optimizations and Lesson 7 on Operational Metrics)
+●	Estimate the cost, latency, and effort required for implementation:
+●	Cost & Latency: Where is cost/latency creeping in? Consider factors such as:
+●	Increased token usage (input/output)
+●	Multiple LLM calls
+●	Vector database storage and retrieval
+●	Effort:
+●	Categorize the effort level as low, medium, or high, based on what you've learned in class.
+●	Justify your rating—why do you consider it high/medium/low?
+Note: You don’t need exact numbers, simply explaining where costs and latency arise is valuable.
+6.	Business & Compliance Considerations (Guardrails from here, or lookup online)
+●	What guardrails are necessary at this stage?
+●	Are there any compliance requirements relevant to your industry or use case?
+If applicable, consider data privacy, security, or regulatory constraints that may impact your design.

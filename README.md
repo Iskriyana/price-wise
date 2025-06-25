@@ -1,220 +1,233 @@
-# 🎯 PriceWise - Intelligent Pricing System (Iteration 2)
+# 💰 PriceWise AI - Enterprise Pricing Agent System
 
-A semi-autonomous pricing agent that combines **RAG**, **financial simulation**, and **human-in-the-loop** approval workflows for intelligent retail pricing decisions.
+A multi-iteration RAG-powered pricing analysis and recommendation system for retail enterprises, implementing best practices for enterprise AI applications.
 
-## 🚀 **Quick Start**
+## 🎯 Project Overview
 
-### 1. **Setup Environment**
-```bash
-# Clone and navigate to project
-git clone <repo-url>
-cd price-wise
+This project demonstrates a progressive development approach for enterprise AI systems, starting with a solid RAG foundation and evolving towards more sophisticated agentic capabilities.
 
-# Activate virtual environment
-source .venv/bin/activate  # Mac/Linux
-# OR
-.venv\Scripts\activate     # Windows
+### Development Approach
+- **Iteration 1**: RAG-powered Q&A system for pricing analysis
+- **Iteration 2**: Semi-autonomous agent with planning, memory, and tools (planned)
+- **Iteration 3**: Multi-agent system with autonomous monitoring (planned)
 
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 2. **Configure API**
-```bash
-# Create .env file with your OpenAI API key
-echo "OPENAI_API_KEY=your_api_key_here" > .env
-```
-
-### 3. **Start Interactive System**
-```bash
-python interactive_pricing.py
-```
-
-## ✨ **Key Features**
-
-### 🔍 **Smart SKU Search**
-- Search by exact SKU code (`SKU12345`)
-- Search by product name (`headphones`, `coffee maker`)
-- Search by category (`electronics`, `sports`)
-- Intelligent fuzzy matching
-
-### 🤖 **AI-Powered Recommendations**
-- LangGraph-based pricing agent with ReAct reasoning
-- Market analysis and competitive positioning
-- Confidence scoring and risk assessment
-- Financial impact simulation
-
-### 💰 **Financial Simulation Engine**
-- Revenue and profit impact projections
-- Demand elasticity modeling
-- Break-even analysis
-- Price sensitivity calculations
-
-### ⚖️ **Human-in-the-Loop Approval**
-- Structured approval workflow
-- User notes and context capture
-- Automated criteria checking
-- Complete audit trail
-
-### 📊 **Comprehensive Tracking**
-- `approved_price_changes.json` - Detailed records
-- `price_change_log.csv` - Human-readable log
-- Real-time status updates
-- Implementation tracking
-
-## 🎮 **Usage Examples**
-
-### **Interactive Pricing Session**
-```bash
-python interactive_pricing.py
-```
-1. Search for SKU12345 (Wireless Headphones)
-2. Review product details and competitor analysis
-3. Get AI pricing recommendation with confidence score
-4. Review financial impact simulation
-5. Approve/reject with custom notes
-6. Track changes in generated files
-
-### **Demo Approval Workflow**
-```bash
-python demo_approval_workflow.py
-```
-- Automated approval criteria demonstration
-- Business scenario coverage (Black Friday, clearance)
-- Enterprise-grade decision workflows
-
-### **API Server (Optional)**
-```bash
-python main.py
-```
-- REST API endpoints for integration
-- Programmatic access to all functionality
-
-## 📦 **Project Structure**
+## 📁 Repository Structure
 
 ```
 price-wise/
-├── 📱 interactive_pricing.py      # Main interactive application
-├── 🎬 demo_approval_workflow.py   # Automated approval demo
-├── 🔧 main.py                     # REST API server (optional)
-├── 📋 requirements.txt            # Dependencies
-├── 📚 README.md                   # This file
-├── 📖 SYSTEM_SUMMARY.md           # Comprehensive system overview
-├── 🧪 FINAL_WORKFLOW_GUIDE.md    # Testing instructions
-├── 
-├── src/                           # Core system components
-│   ├── 🤖 pricing_agent.py       # LangGraph pricing agent
-│   ├── 🛠️ tools.py               # RAG & simulation tools
-│   └── 📊 models.py               # Data models
-├── 
-├── data/                          # Data storage
-│   └── chroma_db/                 # Vector database (optional)
-└── 
-├── 📁 Generated Files:
-│   ├── approved_price_changes.json  # Detailed approval records
-│   └── price_change_log.csv         # Human-readable log
+├── iteration_1/              # Current: RAG-powered Pricing Analyst
+│   ├── src/                  # Core source code
+│   ├── streamlit_app.py      # Web UI interface
+│   ├── main.py              # FastAPI server
+│   ├── demo_pricing_agent.py # Interactive demo
+│   └── requirements.txt      # Python dependencies
+├── iteration_2/              # Future: Semi-autonomous Agent
+├── data/                     # Shared product dataset
+├── context_notepads/         # Project documentation
+└── README.md                # This file
 ```
 
-## 🔍 **Available Test Data**
+## 🚀 Iteration 1: RAG-Powered Pricing Analyst
 
-### **Products for Testing:**
-- **SKU12345** - Wireless Bluetooth Headphones ($99.99)
-- **SKU67890** - Athletic Running Shoes ($129.99)
-- **SKU54321** - Premium Coffee Maker ($79.99)
-- **SKU11111** - Smart Watch ($199.99)
-- **SKU22222** - Yoga Mat ($49.99)
-- **SKU33333** - High Performance Blender ($149.99)
+### Features
+- **RAG Workflow**: Semantic search + LLM reasoning for pricing recommendations
+- **Dual Retrieval**: Vector store with text-based fallback for reliability
+- **Business Rules**: Mathematical validation and margin analysis
+- **Guardrails**: Price bounds and confidence thresholds
+- **Multiple Interfaces**: Streamlit UI, FastAPI server, and CLI demo
 
-### **Search Examples:**
-- `SKU12345` → Exact SKU lookup
-- `headphones` → Product name search
-- `electronics` → Category search
-- `bluetooth` → Partial matching
+### Quick Start
 
-## 🎯 **Business Value**
+#### 1. Environment Setup
+```bash
+# Create UV environment with Python 3.11.8
+uv venv price-wise --python 3.11.8
+uv python pin 3.11.8
+source price-wise/bin/activate
 
-### **For Pricing Analysts:**
-✅ **Natural Language Interface** - Ask pricing questions in plain English  
-✅ **Instant Market Analysis** - Comprehensive data in seconds  
-✅ **Risk-Assessed Recommendations** - Confidence scores and impact projections  
-✅ **Complete Audit Trail** - Full compliance documentation  
+# Install dependencies
+cd iteration_1
+pip install -r requirements.txt
+```
 
-### **For Management:**
-✅ **Approval Controls** - Human oversight of all changes  
-✅ **Financial Impact Visibility** - Clear ROI projections  
-✅ **Automated Criteria Checking** - Consistent decision standards  
-✅ **Performance Tracking** - Monitor pricing effectiveness  
+#### 2. Set OpenAI API Key (Optional)
+```bash
+export OPENAI_API_KEY="your-api-key-here"
+```
+*Note: System works without OpenAI API key using rule-based fallback*
 
-### **For Operations:**
-✅ **Implementation-Ready Changes** - Structured data formats  
-✅ **Clear Documentation** - Rationale for every decision  
-✅ **Integration-Friendly** - JSON/CSV outputs for systems  
-✅ **Scalable Framework** - Handle multiple SKUs efficiently  
+#### 3. Choose Your Interface
 
-## 🔧 **Technical Architecture**
+**Option A: Streamlit Web UI (Recommended)**
+```bash
+cd iteration_1
+streamlit run streamlit_app.py
+```
+- Navigate to http://localhost:8501
+- Interactive web interface with dashboards and query history
 
-### **Core Technologies:**
-- **LangGraph** - Agent orchestration with ReAct reasoning
-- **OpenAI GPT-4** - Natural language processing and analysis
-- **ChromaDB** - Vector database for RAG (with fallback)
-- **Pydantic** - Data validation and modeling
-- **FastAPI** - REST API endpoints (optional)
+**Option B: FastAPI Server**
+```bash
+cd iteration_1
+python main.py
+```
+- API available at http://localhost:8000
+- Interactive docs at http://localhost:8000/docs
 
-### **Key Capabilities:**
-- **Semi-autonomous reasoning** with planning and memory
-- **RAG-powered data retrieval** for products and competitors
-- **Financial simulation** with elasticity modeling
-- **Human approval workflow** with audit controls
-- **Multi-SKU analysis** for portfolio optimization
+**Option C: Command Line Demo**
+```bash
+cd iteration_1
+python demo_pricing_agent.py
+```
+- 5 pre-configured example queries
+- Immediate demonstration of capabilities
 
-## 📈 **Success Metrics**
+### System Architecture
 
-✅ **Functional Requirements Met:**
-- Semi-autonomous agent with planning capabilities ✓
-- RAG-powered product and market data retrieval ✓
-- Financial simulation with impact modeling ✓
-- Human-in-the-loop approval workflow ✓
-- Short-term memory via conversation history ✓
-- Multi-SKU analysis support ✓
+#### RAG Workflow (4 Steps)
+1. **Context Retrieval**: Semantic search for relevant products
+2. **Business Rules**: Mathematical validation and margin analysis  
+3. **LLM Generation**: Intelligent recommendation synthesis
+4. **Guardrails**: Safety checks and approval thresholds
 
-✅ **User Experience Goals:**
-- Intuitive search and navigation ✓
-- Clear visualizations with emojis and formatting ✓
-- Comprehensive help and examples ✓
-- Error handling and graceful fallbacks ✓
+#### Data Processing
+- **1000+ Products**: Apparel dataset with pricing, costs, and competitor data
+- **Vector Embeddings**: Semantic search using ChromaDB
+- **Fallback Retrieval**: Text-based search when vector store fails
+- **Real-time Analysis**: Product margins, stock levels, and competitive positioning
 
-## 🚨 **Troubleshooting**
+### Example Queries
+1. "What is the recommended price for Product SKU APP10000 given that our main competitor lowered their price by 10%?"
+2. "Should we increase prices for Adidas T-shirts to improve our profit margin?"
+3. "Which Nike products are overpriced compared to competitors?"
+4. "What pricing strategy should we use for products with high inventory levels?"
+5. "Recommend pricing for Under Armour Socks considering current market conditions"
 
-### **Common Issues:**
-1. **API Errors** → Check `.env` file and OpenAI API key
-2. **No Products Found** → Try different search terms or check available SKUs
-3. **Permission Errors** → Ensure write access in project directory
+### API Endpoints
 
-### **Fallback Features:**
-- Mock data when ChromaDB unavailable
-- Graceful error handling for API issues
-- Comprehensive logging for debugging
+#### FastAPI Server
+- `GET /health` - System health check
+- `POST /query` - Process pricing query
+- `GET /products/search/{query}` - Search products
+- `GET /status` - Agent status information
 
-## 🎯 **Quick Testing Workflow**
+#### Request Format
+```json
+{
+  "query": "Should we increase Nike sneaker prices?",
+  "context": "margin optimization",
+  "product_ids": ["APP10000", "APP10001"]
+}
+```
 
-1. **Start Interactive System:** `python interactive_pricing.py`
-2. **Search SKU12345:** Choose option 1, enter SKU
-3. **Get Recommendation:** Follow prompts for AI analysis
-4. **Approve Change:** Review and approve with notes
-5. **Check Files:** Review generated JSON and CSV logs
-6. **View History:** Use option 3 to see all changes
+### Technical Features
 
-**📖 For detailed testing instructions, see [FINAL_WORKFLOW_GUIDE.md](FINAL_WORKFLOW_GUIDE.md)**
+#### Enterprise RAG Best Practices
+- **Prompt Engineering**: Structured system prompts with role definition
+- **Query Enhancement**: Automatic query expansion with pricing terminology
+- **Context Optimization**: Relevant product data with market analysis
+- **Confidence Scoring**: Data-driven confidence assessment
+- **Approval Workflows**: Risk-based approval thresholds
 
-## 🚀 **Next Steps (Iteration 3)**
+#### Reliability & Fallbacks
+- **Dual Retrieval Systems**: Vector store with text-based backup
+- **OpenAI Fallback**: Rule-based recommendations when API unavailable
+- **Error Handling**: Graceful degradation and informative error messages
+- **Compatibility Fixes**: ChromaDB CoreML issues on Mac resolved
 
-The system is architected for expansion to:
-- Multi-agent orchestration for complex scenarios
-- Autonomous monitoring of market triggers
-- Geographic pricing with location-based rules
-- Production system integration
-- Advanced analytics and reporting
+#### Data Quality
+- **Business Logic Validation**: Margin calculations and competitive analysis
+- **Price Bounds**: Cost-plus minimum markup enforcement
+- **Market Context**: Competitor pricing and inventory considerations
+- **Guardrails**: 50% max price change limits and confidence thresholds
 
----
+## 📊 Dataset
 
-**🎉 PriceWise delivers a production-ready Iteration 2 pricing intelligence system that combines AI automation with human oversight for reliable, auditable pricing decisions.**
+The system uses a comprehensive apparel pricing dataset with:
+- **1000+ Products**: Diverse categories and brands
+- **Real-time Data**: Current prices, costs, and inventory levels
+- **Competitor Intelligence**: Market pricing for competitive analysis
+- **Sales Metrics**: Historical performance and demand elasticity
+
+## 🔧 Development & Testing
+
+### Running Tests
+```bash
+cd iteration_1
+python -m pytest tests/ -v
+```
+
+### Development Mode
+```bash
+cd iteration_1
+uvicorn main:app --reload --port 8000
+```
+
+### Logging
+The system provides comprehensive logging for debugging and monitoring:
+- Agent initialization and status
+- Retrieval method selection (vector vs. text-based)
+- Query processing and recommendation generation
+- Error handling and fallback activation
+
+## 🎛️ Configuration
+
+### Environment Variables
+- `OPENAI_API_KEY`: OpenAI API key (optional)
+- `PYTHONPATH`: Include project root for imports
+
+### System Requirements
+- Python 3.11.8+
+- 4GB+ RAM (for vector embeddings)
+- SQLite 3.35+ (for ChromaDB)
+
+## 🏗️ Future Iterations
+
+### Iteration 2: Semi-Autonomous Agent (Planned)
+- LangGraph workflow orchestration
+- Multi-tool agent with planning capabilities
+- Human-in-the-loop approval workflows
+- Short-term memory and conversation history
+- Financial simulation and impact modeling
+
+### Iteration 3: Multi-Agent System (Planned)
+- Autonomous price monitoring agents
+- Market intelligence gathering
+- Coordinated pricing strategies
+- Advanced approval workflows
+- Real-time market adaptation
+
+## 🤝 Contributing
+
+This project demonstrates enterprise AI development patterns:
+1. **Iterative Development**: Progressive capability enhancement
+2. **Reliability First**: Fallback systems and error handling
+3. **Business Logic**: Domain-specific validation and guardrails
+4. **User Experience**: Multiple interfaces for different use cases
+5. **Documentation**: Comprehensive guides and examples
+
+## 📝 License
+
+MIT License - see LICENSE file for details.
+
+## 🆘 Troubleshooting
+
+### Common Issues
+
+**ChromaDB Installation Issues**
+- Requires SQLite 3.35+
+- Falls back to text-based retrieval automatically
+
+**OpenAI API Errors**
+- System works without API key using rule-based recommendations
+- Set environment variable for full LLM capabilities
+
+**Import Errors**
+- Ensure you're in the correct iteration directory
+- Check Python path includes project root
+
+**Streamlit Port Conflicts**
+- Use `--server.port 8502` for alternative port
+- Check for existing Streamlit processes
+
+For detailed troubleshooting, see the logs or contact support.

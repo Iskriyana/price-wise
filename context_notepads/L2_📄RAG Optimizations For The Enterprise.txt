@@ -1,0 +1,61 @@
+﻿📄RAG Optimizations For The Enterprise
+Lesson 6
+These RAG techniques help improve retrieval accuracy, reduce irrelevant information, and enhance response generation.
+________________
+
+
+1. Query Expansion
+Reference: Query Expansion in LangChain
+* Key Concept: Expands the original query by including synonyms or related terms to improve retrieval.
+* When to Use: Best for customer support chatbots, e-commerce search engines, and knowledge base retrieval, where slight wording differences impact results.
+* When NOT to Use: Ineffective for highly structured or domain-specific queries where meaning cannot be altered.
+* Additional Costs: Minimal—only requires synonym matching.
+* Effort: Low—can be implemented with simple embedding lookups and synonym lists.
+________________
+
+
+2. HyDE (Hypothetical Document Embeddings)
+Paper: Hypothetical Document Embeddings for Zero-Shot Dense Passage Retrieval
+* Key Concept: Generates a hypothetical answer as an enriched query, improving search relevance.
+* When to Use: Useful for retrieving case law precedents, market research, and summarizing long documents, where a richer context enhances retrieval.
+* When NOT to Use: Overhead is unnecessary for keyword-based searches or structured queries where retrieval precision is already high. Avoid using it in niche domains with limited LLM knowledge, as it may generate irrelevant or misleading results.
+* Additional Costs: Medium—requires an additional LLM generation step.
+* Effort: Low—requires only prompt modifications but increases inference latency.
+________________
+
+
+3. Hybrid Search
+Reference: https://weaviate.io/blog/hybrid-search-explained
+* Key Concept: Combines keyword-based retrieval and semantic search (vector embeddings) for better accuracy.
+* When to Use: Ideal for legal discovery, customer feedback analysis, and HR resume filtering, where exact matches and semantic meaning both matter.
+* When NOT to Use: Inefficient for simple queries where either keyword search or vector search alone is sufficient.
+* Additional Costs: Medium—requires maintaining two retrieval methods and reranking outputs.
+* Effort: Low-Medium—requires hybrid search infrastructure but is easy to scale.
+________________
+
+
+4. graphRAG
+Reference: https://www.microsoft.com/en-us/research/blog/graphrag-unlocking-llm-discovery-on-narrative-private-data/
+* Key Concept: Uses graph-based structures and traversal algorithms to connect related information across multiple documents.
+* When to Use: Best for fraud detection, knowledge graphs, and enterprise analytics, where relationships between retrieved documents enhance understanding.
+* When NOT to Use: Overhead is unnecessary for single-turn queries with no need for relationship mapping. Not worth the effort if data conversion is time-consuming and other options have not been tested out.
+* Additional Costs: High—requires additional graph construction and traversal operations.
+* Effort: Medium-High—requires integrating knowledge graphs into RAG pipelines.
+________________
+
+
+5. Corrective RAG
+Paper: Corrective Retrieval-Augmented Generation for Reliable Question Answering
+* Key Concept: Iteratively refines retrieval results by detecting gaps and triggering follow-up queries.
+* When to Use: Useful for medical research, financial analysis, and investigative journalism, where retrieving partial information requires iterative refinement.
+* When NOT to Use: Unnecessary when retrieval is sufficient on the first pass, such as simple fact lookups.
+* Additional Costs: High—requires multiple retrieval iterations and feedback loops.
+* Effort: Medium-High—needs logic for iterative correction and response validation.
+6. Fine-Tuned AI Models For RAG
+📄 Paper: Fine-tuning LLMs for Multi-Hop Retrieval-Augmented Generation
+* Key Concept: Uses domain-specific fine-tuning to improve retrieval accuracy for specialized applications.
+* When to Use: Best for legal compliance, pharmaceutical research, and defense intelligence, where generic retrieval models fail to capture domain nuances. Should never be used without benchmarking generic models first!
+* When NOT to Use: Not worth the investment for general-purpose Q&A or casual search applications.
+* Additional Costs: High—requires labeled domain-specific training data and fine-tuning.
+* Effort: High—needs specialized ML expertise for tuning and deployment.
+Bonus points if you can find more useful optimizations from our RAG paper list and use them instead of the above ones: https://github.com/aishwaryanr/awesome-generative-ai-guide/blob/main/research_updates/rag_research_table.md

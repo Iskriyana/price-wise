@@ -1,0 +1,97 @@
+﻿📄Prompt Optimizations For The Enterprise
+Lesson 5
+Simple optimizations that always work:
+* Few-Shot: Include a few examples in your prompt to reliably guide the model. For example, when translating sentences, show two examples before asking for a translation.
+* Role-Based Prompts: Define a role to set the context. For example, "You are a financial analyst. Explain the impact of interest rate changes on stock markets."
+* Keep It Simple: Use clear, straightforward language to avoid confusion.
+* Comprehensive Explanation: Share all relevant details so the model has enough context, reducing ambiguity in its responses.
+* Avoid Bias: Craft prompts that steer clear of encouraging sycophantic or overly agreeable answers.
+* Natural Tone: Instruct the model to respond in a conversational and accessible tone.
+Research papers to consider (see the when to use and when not to use for making decisions):
+Thought Generation and Reflection
+Below are several widely adopted prompting techniques in the enterprise that help LLMs generate intermediate “thoughts” and engage in reflection before producing a final answer:
+1. Chain-of-Thought (CoT) Prompting
+Paper: Chain-of-Thought Prompting Elicits Reasoning in Large Language Models by Jason Wei et al.
+* Key Concept: Encourages the model to “think aloud” by breaking down complex problems into step-by-step reasoning.
+* When to Use: Useful in financial forecasting, customer service automation (complex queries that require reasoning), and contract analysis where step-by-step breakdowns improve accuracy.
+* When NOT to Use: Not needed for basic data lookups, simple FAQs, or retrieving stored knowledge where extra reasoning adds unnecessary overhead.
+* Additional Costs: Minimal token overhead due to extra reasoning steps.
+* Effort: Low—requires only a prompt modification, no model tuning.
+________________
+
+
+2. Tree-of-Thought (ToT) Prompting
+Paper: Tree of Thoughts: Deliberate Problem Solving with Large Language Models by Shunyu Yao et al.
+* Key Concept: Extends CoT by allowing multiple branching reasoning paths, enabling backtracking and exploration of different solutions.
+* When to Use: Ideal for business strategy simulations, supply chain planning, and multi-step decision-making where evaluating multiple potential solutions is valuable.
+* When NOT to Use: Inefficient for straightforward decision-making (e.g., selecting predefined workflows) or when a single correct answer is sufficient.
+* Additional Costs: Higher token usage due to multiple reasoning paths being explored.
+* Effort: Moderate—requires structured prompt design to facilitate branching logic.
+________________
+
+
+3. ReAct (Reasoning + Acting) Pattern
+Paper: ReAct: Synergizing Reasoning and Acting in Language Models by Shunyu Yao et al.
+* Key Concept: Combines reasoning with real-world actions (e.g., retrieval, API calls, tool use) to improve decision-making and fact-checking.
+* When to Use: Best for AI-powered research assistants, real-time data-driven decision-making, and legal or compliance checks that require both reasoning and live information retrieval.
+* When NOT to Use: Unnecessary when static knowledge suffices (e.g., writing reports that don’t require real-time data).
+* Additional Costs: May require API calls, retrieval operations, or external tool use, increasing latency and cost.
+* Effort: Higher—needs integration with external tools and structured prompts.
+________________
+
+
+Decomposition
+Here are some popular task decomposition methods used with LLMs to break down complex problems into manageable sub-tasks:
+1. Least-to-Most Prompting
+Paper: Least-to-Most Prompting Enables Complex Reasoning in Large Language Models by Denny Zhou et al.
+* Key Concept: The model solves simpler sub-problems first and progressively builds up to the full solution, reducing cognitive load.
+* When to Use: Ideal for progressive decision-making, stepwise automation workflows, and legal case analysis, where breaking a problem into increasing levels of complexity improves accuracy.
+* When NOT to Use: Inefficient when tasks don’t naturally build on previous sub-steps, such as independent classification tasks or single-step lookups.
+* Additional Costs: Slightly increased token usage due to solving multiple stages sequentially.
+* Effort: Low—requires structuring the prompt to guide stepwise task progression.
+2. Decomposed (DecomP) Prompting
+Reference: Decomposed Prompting: A Modular Approach for Solving Complex Tasks
+* Key Concept: Explicitly breaks down a complex task into distinct sub-tasks, each handled separately before combining results.
+* When to Use: Useful in customer support automation, document analysis, and business intelligence, where separating concerns (e.g., extracting data, summarizing, and generating insights) improves accuracy.
+* When NOT to Use: Not necessary for tasks that don’t require modular breakdown, such as simple fact-based queries or one-step predictions.
+* Additional Costs: May increase latency due to multiple independent prompts being processed.
+* Effort: Moderate—requires careful task segmentation to ensure coherence.
+________________
+
+
+3. Plan-and-Solve Prompting
+Paper: Plan-and-Solve Prompting: Improving Zero-Shot Chain-of-Thought Reasoning by Large Language Models by Lei Wang et al.
+* Key Concept: The model first generates a structured plan before executing each step sequentially, ensuring all aspects of a complex task are covered.
+* When to Use: Best for workflow automation, project planning, and long-form content generation, where laying out a structured execution plan improves consistency and completeness.
+* When NOT to Use: Unnecessary for short-form tasks or single-turn queries that do not benefit from structured planning.
+* Additional Costs: Additional tokens for generating and following a structured plan.
+* Effort: Moderate—requires prompt engineering to distinguish between planning and execution phases.
+________________
+
+
+4. Recursive Task Decomposition
+Paper: Recursion of Thought: A Divide and Conquer Approach to Multi-Context Reasoning with Language Models by Soochan Lee and Gunehee Kim.
+* Key Concept: Tasks are broken down recursively, where each sub-task is further decomposed if necessary, ensuring granular problem-solving.
+* When to Use: Ideal for multi-step reasoning in enterprise workflows, root cause analysis, and complex decision-making that benefits from breaking down problems into smaller, manageable components.
+* When NOT to Use: Overhead is unnecessary for linear or simple tasks that do not require iterative decomposition.
+* Additional Costs: Higher token and processing costs due to repeated decomposition steps.
+* Effort: Higher—requires defining decomposition rules and iterative execution logic.
+Ensembling
+Ensembling prompting techniques aim to combine multiple outputs—often generated by the same prompt—to yield a more robust, reliable final answer. Here are some key methods and papers in this areas
+1. Self-Consistency for Chain-of-Thought (CoT)
+Paper: Self-Consistency Improves Chain of Thought Reasoning in Language Models by Xuezhi Wang et al.
+* Key Concept: Samples multiple chain-of-thought reasoning paths and selects the final answer using majority voting to reduce reasoning errors.
+* When to Use: Useful for financial risk assessment, legal contract analysis, and scientific research, where multiple reasoning approaches help validate complex conclusions.
+* When NOT to Use: Not needed for straightforward fact-based queries where a single deterministic response is sufficient.
+* Additional Costs: Increased token usage due to generating multiple reasoning paths.
+* Effort: Moderate—requires sampling multiple outputs and aggregating results.
+________________
+
+
+2. Active Prompting and Ensemble of Prompts
+Related Work: Active Prompting with Chain-of-Thought for Large Language Models by Diao et al.
+* Key Concept: Uses diverse prompts to generate multiple outputs, which are then aggregated through a meta-prompt or direct ensembling to improve reasoning quality.
+* When to Use: Effective for medical diagnostics, fraud detection, and policy analysis, where different perspectives help reduce bias and improve accuracy.
+* When NOT to Use: Overhead is unnecessary for tasks requiring simple lookups or deterministic computations where variability doesn’t add value.
+* Additional Costs: Higher inference costs due to multiple prompt evaluations and aggregation.
+* Effort: High—requires designing diverse prompts and integrating an ensembling mechanism.

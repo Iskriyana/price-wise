@@ -1,0 +1,44 @@
+﻿📄Level 2 Agents Resources For The Enterprise
+Lesson 7
+Agentic Memory Methods (Choose which of these memory types might be needed)
+Agentic memory enables AI agents to retain and leverage past interactions, enhancing their ability to adapt, learn, and make better decisions over time. You don’t need to worry too much about the implementation—these memories can be managed through LLM calls or external functions and stored in vector databases.
+Short-Term Memory: Managing the Active Conversation
+Short-term memory in LLM agents functions similarly to human working memory—it holds information temporarily to handle ongoing conversations or tasks. This memory is limited by the model’s context window (the maximum number of tokens it can process at once).
+There are several ways agents can manage short-term memory:
+* All Past Messages: Retaining the entire conversation history until the context window runs out.
+* Latest N Messages: Only storing the most recent exchanges to prioritize the current conversation.
+* Summarized History: Creating running summaries of past interactions to compress information while preserving key points.
+* Filtered Messages: Storing only relevant pieces of the conversation based on importance or task needs.
+This flexibility allows developers to balance memory efficiency and context retention, ensuring agents can stay on track without exceeding token limits.
+Long-Term Memory: Enabling Learning and Continuity
+While short-term memory supports immediate interactions, long-term memory enables an agent to "remember" across sessions—much like human long-term memory. It allows agents to learn about users, recall past experiences, and refine their behavior over time. Long-term memory is often inspired by cognitive psychology and can be categorized into three types:
+Semantic Memory
+Semantic memory stores factual knowledge. For agents, this might include information like a user’s name, preferences, past purchases, or general world knowledge.
+Example: Remembering that the user prefers vegetarian recipes or works in marketing.
+Episodic Memory
+Episodic memory stores experiences and specific events. In agents, this could include logs of past conversations, completed tasks, or errors encountered.
+Example: Recalling that the user asked for help drafting an email last week.
+Procedural Memory
+Procedural memory captures skills, rules, and task execution methods—like a system prompt that guides behavior or specific API call patterns.
+Example: Remembering how to call an API to fetch weather data or execute a multi-step workflow.
+Storage: Hardcoded in system prompts, JSON configurations, or reusable code snippets.
+________________
+
+
+Multi-Agent Collaboration as a Design Pattern (Do you need Multi-Agents?)
+* Key Concept: Enables task specialization and parallel processing by distributing subtasks among specialized agents while maintaining workflow coherence. Each agent operates independently, leveraging tools, planning, or reflection while sharing intermediate results to enhance adaptability.
+* When to Use: Ideal for complex workflows, autonomous research assistants, and AI-driven customer support where different agents handle specialized subtasks.
+* When NOT to Use: Inefficient for single-agent tasks or simple procedural automation, where overhead from inter-agent communication adds unnecessary complexity. Never use if you can either operationally or empirically prove that single agents don't work
+* Additional Costs: Increased computational and coordination overhead due to agent-to-agent messaging and task distribution.
+Multi-Agent Collaboration Patterns
+Hierarchical Patterns (More Controllable, Less Dynamic): One Orchestrator: A central agent assigns tasks and collects results from other agents.
+* Parallelization: The orchestrator sends tasks to multiple agents simultaneously for efficiency.
+* Specialization: Each agent is assigned specific subtasks based on their expertise.
+* Tool Suite Experts: Agents act as specialists (e.g., Search Agent, Summarization Agent), coordinated by the orchestrator.
+Flat Patterns (More Dynamic, Less Controllable): All Communicate: Every agent can talk to every other agent, sharing insights and results freely.
+* Debate: Agents argue different perspectives or solutions and reach consensus.
+* Polling: Agents vote on the best answer or approach.
+* Evaluation: Agents evaluate each other’s outputs for quality control.
+Hybrid Patterns
+* Combines hierarchical control with moments of peer-to-peer communication for flexibility and balance.
+Note: Hierarchical is easier to control but less adaptive. Flat offers creativity and adaptability but can be harder to manage.

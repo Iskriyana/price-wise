@@ -1,0 +1,21 @@
+﻿📄Operational Metrics
+Lesson 9
+Operational Metrics for AI Systems: Measuring Time & Cost Efficiency
+* Prompt Workflows:
+   * Token Usage: Tracks the total tokens consumed per query to optimize costs.
+   * LLM API Calls: Measures the number of times an LLM is called to complete a task, reducing unnecessary API usage.
+   * Tool Invocation Time: Evaluates the time taken when AI calls external tools or APIs, ensuring minimal delays in workflow execution.
+* Retrieval-Augmented Generation (RAG) Systems:
+   * Retrieval API Call Latency: Measures the time taken to fetch relevant context from vector databases or knowledge bases.
+   * Query Processing Time: Tracks computational time spent on generating vector embeddings and retrieving relevant documents.
+   * Compute Overhead: Assesses additional processing time for reranking and filtering retrieved results, impacting response speed.
+* AI Agents:
+   * Tool Invocation Time: Evaluates delays in executing API calls when AI interacts with external tools.
+   * Average LLM Calls to Complete Task: Tracks how many LLM queries are needed before producing a final output, identifying inefficiencies.
+   * Total Execution Time: Measures end-to-end processing time, ensuring workflow automation remains cost-effective and scalable.
+* Fine-Tuning & Model Training:
+   * Fine-Tuning Time: Tracks the total time required for model fine-tuning, including gradient updates and convergence speed.
+   * Data Curation Effort: Measures the time and resources needed to clean, label, and preprocess training data for fine-tuning.
+   * Compute Resources Needed: Evaluates GPU/TPU usage and overall computational costs, ensuring resource efficiency during training.
+   * Checkpoint & Iteration Overhead: Measures the time spent on saving intermediate fine-tuning checkpoints and running multiple training iterations.
+By monitoring these operational metrics, AI systems can be optimized for efficiency, scalability, and cost-effectiveness, ensuring smooth deployment of prompt-based models, RAG systems, AI agents, and fine-tuned models while reducing unnecessary computation. 🚀

@@ -1,0 +1,213 @@
+﻿📄Evaluation Metrics
+Lesson 8
+Enterprise AI Evaluation Metrics: Use Cases and Applications
+1. Response Quality Metrics
+1.1 Exact Match: Word Matching
+* Description: Checks if the generated response exactly matches a reference response.
+* Required Data: Ideal responses, model-generated responses
+* When to Use: When responses follow strict formats like predefined templates or structured data, such as dates, times, addresses, invoice numbers, or fixed categories.
+* How to Use: Use the equals heuristic metric from Comet’s heuristic metrics.
+Example Use Cases:
+* Invoice Processing: Extracting exact invoice numbers, dates, or order IDs.
+* Medical Record Matching: Ensuring medical test results match database records.
+* LLM-based Classification in Workflow Agents: For predicting “yes”/“no” decisions or categorical routing (e.g., high/medium/low priority) in automated systems.
+________________
+
+
+1.2 Fuzzy Match: Contains/Regex/Levenshtein
+* Description: Measures similarity by checking partial matches using substring search (Contains), pattern matching (Regex), or character-level edits (Levenshtein distance).
+* Required Data: Ideal responses, model-generated responses
+* When to Use: When strict exact matching isn’t needed, but the response must contain essential terms or be close to the reference. Best for structured fields where minor variations are acceptable, such as names, email addresses, product IDs, or ticket numbers.
+   * Contains: Checks if a key term is present in the response.
+   * Regex: Ensures responses match predefined patterns (e.g., emails, phone numbers).
+   * Levenshtein Distance: Measures how many small edits (insertions, deletions, swaps) are needed to match two strings, useful for typos and OCR errors.
+* How to Use: Use the required metric from Comet’s heuristic metrics.
+Example Use Cases:
+   * Customer Support Ticket Matching (Regex)
+   * Ensures AI-generated case numbers match a standard format (e.g., TICKET-12345 or SUP-2024-001).
+   * Regex ensures responses conform to expected patterns while allowing format variations.
+   * Product Search & Autocomplete (Contains & Levenshtein)
+   * Allows slight variations in product names (e.g., "iPhone14 ProMax" vs. "iPhone 14 Pro Max").
+   * Contains ensures key terms appear, while Levenshtein allows minor typos.
+   * Email & Phone Number Validation (Regex)
+   * Ensures AI correctly identifies and formats email addresses (user@example.com) and phone numbers (+1-234-567-8901).
+   * Regex ensures correct structure while ignoring minor spacing or symbol variations.
+   * OCR & Text Extraction (Levenshtein)
+   * Matches scanned invoice IDs even with minor OCR errors (e.g., "INV-2024-001" vs. "INV2024 001").
+   * Levenshtein helps correct small errors from OCR processing.
+   * Name Matching in CRM Systems (Levenshtein & Contains)
+   * Recognizes similar names despite typos (e.g., "Jonathon" vs. "Jonathan").
+   * Levenshtein corrects minor spelling mistakes, while Contains ensures key parts of the name are present.
+________________
+
+
+1.3 Fuzzy Match:BLEU/ROUGE
+   * Description: Measures similarity between generated and reference responses using n-gram overlap (matching word sequences). BLEU is commonly used for machine translation, while ROUGE is used for summarization.
+   * Required Data: Ideal responses, model-generated responses
+   * When to Use:For shorter responses (under 50-60 words) where some word overlap is required but not exact matching. BLEU/ROUGE is not ideal for long-form content because it focuses on token overlap rather than deep semantic meaning.
+   * How to Use:Use sentenceBLEU or CorpusBLEU from Comet’s heuristic metrics.
+Example Use Cases:
+   1. Chatbots & Virtual Assistants
+   * Ensures AI-generated customer support responses contain the right key terms.
+   * Example:
+   * Reference: "You can reset your password by clicking ‘Forgot Password’ on the login page."
+   * AI response: "Click ‘Forgot Password’ to reset your password."
+   * Why? Ensures partial alignment while allowing minor phrasing changes.
+   2. FAQ Response Generation
+   * Checks if AI-generated FAQ answers retain key information without being word-for-word identical.
+   * Example:
+   * Reference: "Refunds are processed within 5-7 business days after approval."
+   * AI response: "Processing a refund takes 5 to 7 days after it's approved."
+________________
+
+
+1.4 Semantic Match:BERTScore
+   * Description: Uses BERT (an AI model) embeddings to compare generated and reference responses by calculating cosine similarity between their embeddings. This evaluates meaning rather than exact word matching.
+   * Required Data:Ideal responses, model-generated responses, and BERT embeddings of both.
+   * When to Use: When semantic similarity matters more than exact wording, such as in conversational AI, search engines, and summarization tasks. BERTScore should also be used for shorter responses (<50-60 words), but unlike BLEU/ROUGE, it can also be used when words don't match exactly
+How to Use: Compute using the BERTScore library.
+Example Use Cases:
+   1. Conversational AI & Chatbots
+   * Checks if AI-generated customer support answers preserve meaning despite rewording.
+   * Example:
+   * Reference: "You can request a refund by visiting the payments section."
+   * AI response: "Go to the payments page to initiate a refund request."
+   2. Search Query Matching
+   * Ensures retrieved search results match the user’s intent, even if keywords differ.
+   * Example:
+   * Query: "How to improve cloud security?"
+   * Matched Document: "Best practices for securing cloud storage."
+
+________________
+
+
+1.5 LLM Judge: Any LLM (Prompted for Evaluation)
+      * Description: Uses an LLM to rate responses based on predefined criteria such as coherence, fluency, factual accuracy, or response relevance along specific dimensions.
+      * Required Data: Model-generated responses; optionally, an ideal response for reference, LLM judges can just be prompted to provide metrics even if ideal response is not available. LLM judges are more suitable if you have longer responses to evaluate
+      * When to Use: For evaluating subjective qualities or contextual appropriateness.
+      * How to Use: By using LLM APIs prompted for evaluation
+Example Use Cases (if an ideal response is NOT present):
+      1. HR Response Generation (LLM Judge - No Ideal Response)
+      * Ensures AI-generated HR emails maintain professionalism.
+      * Example: AI-generated job offer emails should be polite and follow HR guidelines.
+      2. Customer Service Automation (LLM Judge - No Ideal Response)
+      * Checks if AI-generated responses are detailed and well-structured based on predefined criteria.
+      * Example: AI support replies should be concise, polite, and informative while answering customer concerns.
+      3. AI-Generated Blog Writing (LLM Judge - No Ideal Response)
+      * Evaluates coherence, readability, and engagement in AI-written articles.
+      * Example: AI-generated tech blogs should have clear, well-structured paragraphs and engaging language.
+________________
+
+
+Example Use Cases (if an ideal response IS present):
+      1. Legal Document Review (LLM Judge - With Ideal Response)
+      * Ensures AI-generated legal summaries retain key contractual details.
+      * Example: Checking if an AI-generated summary of a NDA (Non-Disclosure Agreement) captures essential clauses.
+      2. AI-Generated Medical Summaries (LLM Judge - With Ideal Response)
+      * Ensures AI-generated patient reports align with a doctor-reviewed reference.
+      * Example: AI should correctly summarize lab results or diagnosis reports without introducing errors.
+      3. Policy Compliance Checks (LLM Judge - With Ideal Response)
+      * AI-generated policy documents should match company guidelines and avoid misinterpretations.
+      * Example: AI drafts a workplace privacy policy, and an LLM evaluates if it aligns with company HR standards.
+2. Retrieval Quality Metrics (RAG Evaluation)
+2.1 Context Precision
+      * Description: Measures how precisely the retrieved context aligns with the query. Ensures that only the most relevant context is used.
+      * Required Data: Retrieved context chunks, ideal relevant context chunks
+      * When to Use: When retrieving too much irrelevant information can degrade answer quality.
+      * How to Use: Check out RAG metrics in Comet Opik
+Example Use Cases:
+      * Legal AI Assistants: Ensuring legal document retrieval includes only clauses related to the user's question.
+      * Enterprise Search: Retrieving the most relevant sections from an internal knowledge base while avoiding excess noise.
+      * Customer Support RAG Systems: Fetching precise troubleshooting steps without including unrelated documentation.
+________________
+
+
+2.2 Context Recall
+      * Description: Measures how much of the relevant context was retrieved, ensuring that no critical information is missing.
+      * Required Data: Retrieved context chunks, ideal relevant context chunks
+      * When to Use: When it’s crucial that all key information is retrieved, such as legal, medical, or financial decision-making tasks.
+      * How to Use: Check out RAG metrics in Comet Opik
+Example Use Cases:
+      * Contract Analysis AI: Ensuring AI retrieves all necessary clauses related to a legal inquiry.
+      * Healthcare Q&A Systems: Checking if AI retrieves all relevant symptoms and treatments for a condition.
+      * Technical Documentation Search: Making sure all relevant API details are retrieved for developer queries.
+2.3 Context Relevancy
+      * Description: Assesses how relevant the retrieved context is to the query, ensuring that selected passages contribute meaningfully to the response.
+      * Required Data: User query(prompt), Retrieved context chunks, ideal relevant context chunks
+      * When to Use: When retrieved passages might contain noise or irrelevant content, potentially misleading the model.
+      * How to Use: Use semantic match (e.g., cosine similarity with dense retrieval models) to measure how well retrieved passages match the query intent. Check out RAG metrics in Comet Opik
+Example Use Cases:
+      * Financial AI Assistants: Ensuring stock market reports retrieved are relevant to a user's financial question.
+      * Healthcare RAG Systems: Ensuring retrieved research papers match the patient’s symptoms or medical query.
+      * E-commerce Chatbots: Fetching product recommendations that are truly relevant based on user queries.
+________________
+
+
+2.4 Context Entities Recall
+      * Description: Ensures that important named entities (people, places, organizations, dates, etc.) are not overlooked in the retrieved context.
+      * Required Data: Extracted entities from retrieved context, ideal entity set
+      * When to Use: When key entities (e.g., company names, medical terms) must be included to ensure a reliable response.
+      * How to Use: Use exact match of the retrieved entity sets using NER-based recall metrics. Check out RAG metrics in Comet Opik
+Example Use Cases:
+      * Financial Report Analysis: Ensuring all company names and key financial figures are retrieved.
+      * Medical AI Assistants: Making sure important drugs or conditions appear in the retrieved medical context.
+      * Fraud Detection AI: Ensuring retrieved documents contain all relevant transaction IDs and involved parties.
+3. Generation Quality Metrics (RAG Evaluation)
+3.1 Hallucination Score (LLM Judge)
+      * Description: Ensures AI-generated answers accurately reflect the retrieved context, avoiding misinformation.
+      * Required Data: Generated response, retrieved context chunks
+      * When to Use: When hallucinations or misinterpretations could cause harm.
+      * How to Use: Use LLM-based evaluation or automated fact-checking tools to compare AI responses against retrieved evidence. Check out RAG metrics in Comet Opik
+Example Use Cases:
+      * Legal Contract Analysis AI: AI summarizing a lease agreement must not fabricate obligations that don’t exist in the contract.
+      * AI Financial Reporting: An investment AI summarizing a quarterly earnings report must not misrepresent revenue figures.
+      * Healthcare Chatbots: AI giving medication instructions must ensure it doesn’t contradict official dosage guidelines.
+________________
+
+
+3.2 Answer Relevance (LLM Judge)
+      * Description: Evaluates whether the generated response directly answers the user’s question instead of being vague or off-topic.
+      * Required Data: Generated response, user query
+      * When to Use: When AI-generated responses must stay focused on the user’s specific request.
+      * How to Use: Use LLM judges or semantic similarity models to compare the response to the expected intent. Check out RAG metrics in Comet Opik
+Example Use Cases:
+      * HR Chatbots: When an employee asks, “How many PTO days do I have left?”, AI should provide a number—not general leave policy info.
+      * Medical AI Assistants: A doctor asking for "side effects of Drug X" should not receive a broad pharmaceutical history of Drug X.
+      * Customer Support AI: If a user asks, “Can I get a refund for a defective product?”, AI should not just repeat the refund policy—it should confirm eligibility.
+________________
+________________
+
+
+3.3 Answer Correctness (LLM Judge)
+      * Description: Ensures that AI-generated content is factually correct, preventing misinformation.
+      * Required Data: Generated response, external knowledge sources (fact-checking datasets or human annotations)
+      * When to Use: When factual accuracy is critical, such as in finance, healthcare, or legal applications.
+      * How to Use: Compare AI-generated claims against trusted knowledge sources or use LLM-based fact-checking. Check out RAG metrics in Comet Opik
+Example Use Cases:
+      * Medical AI Assistants: AI-generated treatment recommendations must match verified clinical guidelines (e.g., Mayo Clinic, WHO).
+      * Financial AI Market Reports: AI summarizing a company’s stock earnings must not misreport figures—especially in financial advising.
+      * AI for Legal Document Review: AI summarizing GDPR compliance laws must ensure its explanation aligns with actual legal texts.
+4. Agentic Metrics (Evaluating AI Agents & Automation Workflows)
+4.1 Task Success Rate (Could be exact match, semantic match, fuzzy match or LLM judge)
+      * Description: Measures whether an AI agent successfully completes a defined task, particularly in multi-step workflows or interactive AI systems.
+      * Required Data: Task-specific responses (e.g., expected outcomes for each agent action).
+      * When to Use: When evaluating multi-step or autonomous AI agents that interact dynamically with users or systems.
+      * How to Use: Use approaches as in previous sections
+Example Use Cases:
+      * AI Customer Service Agent: Checking if an AI-powered support bot fully resolves a user’s complaint or correctly escalates unresolved issues.
+      * Automated Workflow Bots: Ensuring HR onboarding bots complete all required steps, from document collection to benefits enrollment.
+      * AI-Powered IT Helpdesk Assistants: Verifying if an AI-driven IT agent successfully resets passwords, resolves tickets, or troubleshoots system errors.
+      * Enterprise AI Assistants: Ensuring AI personal assistants correctly schedule meetings, book travel, and manage calendars without human intervention.
+________________
+
+
+4.2 Routing in Agents
+      * Description: Measures whether an AI agent calls the correct tool or API based on user intent or task requirements.
+      * Required Data: Logs of tool calls, expected tool selections, and user intent data.
+      * When to Use: When AI agents must autonomously choose between multiple external services, APIs, or function calls.
+      * How to Use: Use approaches as in previous sections
+Example Use Cases:
+      * AI Workflow Automation: Ensuring an AI-driven financial assistant correctly differentiates between triggering payment processing vs. account management APIs.
+      * Multi-Tool AI Agents: Validating that an AI-powered developer assistant switches between APIs for data retrieval, debugging, or code deployment based on context.
+      * IT Support Bots: Checking if an AI-driven helpdesk agent correctly triggers workflows, such as initiating a password reset vs. troubleshooting an account lockout.
+      * Legal & Compliance AI: Ensuring AI compliance agents route legal queries to the right regulatory database instead of retrieving unrelated policy guidelines.
