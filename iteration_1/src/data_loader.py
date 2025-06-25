@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class PricingDataLoader:
     """Loads and processes pricing data from CSV file"""
     
-    def __init__(self, data_path: str = "data/apparel_pricing_data.csv"):
+    def __init__(self, data_path: str = "../data/apparel_pricing_data.csv"):
         self.data_path = data_path
         self.products: List[ProductInfo] = []
         self.products_dict: Dict[str, ProductInfo] = {}

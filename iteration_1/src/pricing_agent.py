@@ -1,16 +1,22 @@
 """
-RAG-powered Pricing Agent for Iteration 1
+RAG-powered Pricing Agent for Iteration 1 with Enhanced Guardrails and Approval Workflows
 
 This module implements a workflow-based agent that uses Retrieval-Augmented Generation
 to answer pricing questions by retrieving relevant product data and generating 
-informed recommendations.
+informed recommendations with comprehensive guardrails and approval workflows.
 """
 import os
 import logging
-from typing import Optional, Dict, Any
+import uuid
+from typing import Optional, Dict, Any, List
+from datetime import datetime, timedelta
 from langchain_openai import ChatOpenAI
 from langchain.schema import HumanMessage, SystemMessage
-from src.models import PricingQuery, PricingRecommendation, ProductInfo
+
+from src.models import (
+    PricingQuery, PricingRecommendation, ProductInfo, ApprovalLevel, 
+    ApprovalStatus, RiskLevel, GuardrailViolation, ApprovalRequest, SystemStatus
+)
 from src.data_loader import PricingDataLoader
 from src.vector_store import PricingVectorStore
 from src.simple_retriever import SimplePricingRetriever
@@ -18,8 +24,8 @@ from src.simple_retriever import SimplePricingRetriever
 logger = logging.getLogger(__name__)
 
 
-class PricingRAGAgent:
-    """RAG-powered agent for pricing questions and recommendations"""
+class EnhancedPricingRAGAgent:
+    """Enhanced RAG-powered agent for pricing questions with guardrails and approval workflows"""
     
     def __init__(self, openai_api_key: Optional[str] = None):
         self.openai_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
@@ -29,6 +35,22 @@ class PricingRAGAgent:
         self.simple_retriever = SimplePricingRetriever()
         self.use_vector_store = True
         self.initialized = False
+        
+        # In-memory storage for recommendations and approvals (in production, use database)
+        self.active_recommendations: Dict[str, PricingRecommendation] = {}
+        self.approval_history: List[ApprovalRequest] = []
+        
+        # Guardrail configuration
+        self.guardrail_config = {
+            "max_price_change_percent": 50.0,
+            "min_margin_percent": 10.0,
+            "max_margin_percent": 80.0,
+            "price_below_cost_multiplier": 1.05,  # 5% minimum markup
+            "high_risk_price_change": 25.0,
+            "critical_risk_price_change": 40.0,
+            "low_confidence_threshold": 0.6,
+            "medium_confidence_threshold": 0.8
+        }
         
     def initialize(self) -> None:
         """Initialize the agent with data loading and vector store setup"""
@@ -70,18 +92,21 @@ class PricingRAGAgent:
             self.simple_retriever.initialize(products)
                 
             self.initialized = True
-            logger.info("Pricing agent initialized successfully")
+            logger.info("Enhanced pricing agent initialized successfully")
             
         except Exception as e:
             logger.error(f"Failed to initialize pricing agent: {e}")
             raise
     
     def process_query(self, query: PricingQuery) -> PricingRecommendation:
-        """Process a pricing query using RAG workflow"""
+        """Process a pricing query using enhanced RAG workflow with guardrails"""
         if not self.initialized:
             raise ValueError("Agent not initialized. Call initialize() first.")
             
         try:
+            # Generate unique recommendation ID
+            recommendation_id = str(uuid.uuid4())
+            
             # Step 1: Retrieve relevant context
             retrieval_context = self._retrieve_context(query)
             
@@ -91,15 +116,244 @@ class PricingRAGAgent:
             # Step 3: Generate recommendation using LLM
             recommendation = self._generate_recommendation(query, retrieval_context, validated_products)
             
-            # Step 4: Apply guardrails and validation
-            final_recommendation = self._apply_guardrails(recommendation)
+            # Step 4: Apply comprehensive guardrails and validation
+            final_recommendation = self._apply_enhanced_guardrails(recommendation)
             
-            return final_recommendation
+            # Step 5: Assess risk and determine approval requirements
+            risk_assessed_recommendation = self._assess_risk_and_approval(final_recommendation)
+            
+            # Step 6: Set tracking information
+            risk_assessed_recommendation.recommendation_id = recommendation_id
+            risk_assessed_recommendation.created_by = query.requester_id
+            
+            # Store for approval workflow
+            self.active_recommendations[recommendation_id] = risk_assessed_recommendation
+            
+            logger.info(f"Generated recommendation {recommendation_id} with risk level {risk_assessed_recommendation.risk_level}")
+            
+            return risk_assessed_recommendation
             
         except Exception as e:
             logger.error(f"Failed to process query: {e}")
             raise
     
+    def _assess_risk_and_approval(self, recommendation: PricingRecommendation) -> PricingRecommendation:
+        """Assess risk level and determine approval requirements"""
+        
+        if not recommendation.product_info or not recommendation.recommended_price:
+            recommendation.risk_level = RiskLevel.LOW
+            recommendation.approval_threshold = ApprovalLevel.ANALYST
+            return recommendation
+        
+        product = recommendation.product_info[0]
+        current_price = product.current_price
+        recommended_price = recommendation.recommended_price
+        
+        # Calculate price change percentage
+        price_change_pct = abs((recommended_price - current_price) / current_price * 100)
+        
+        # Calculate financial impact
+        recent_sales = sum(product.hourly_sales) if product.hourly_sales else 0
+        daily_sales_estimate = recent_sales * 4  # Extrapolate 6h to 24h
+        revenue_impact = (recommended_price - current_price) * daily_sales_estimate * 30  # Monthly estimate
+        
+        recommendation.financial_impact = {
+            "price_change_percent": price_change_pct,
+            "price_change_amount": recommended_price - current_price,
+            "estimated_monthly_revenue_impact": revenue_impact,
+            "estimated_daily_sales": daily_sales_estimate
+        }
+        
+        # Determine risk level and approval threshold
+        if price_change_pct >= self.guardrail_config["critical_risk_price_change"]:
+            recommendation.risk_level = RiskLevel.CRITICAL
+            recommendation.approval_threshold = ApprovalLevel.DIRECTOR
+        elif price_change_pct >= self.guardrail_config["high_risk_price_change"]:
+            recommendation.risk_level = RiskLevel.HIGH
+            recommendation.approval_threshold = ApprovalLevel.MANAGER
+        elif (price_change_pct >= 10.0 or 
+              recommendation.confidence_score < self.guardrail_config["medium_confidence_threshold"] or
+              abs(revenue_impact) > 10000):  # $10k monthly impact
+            recommendation.risk_level = RiskLevel.MEDIUM
+            recommendation.approval_threshold = ApprovalLevel.SENIOR_ANALYST
+        else:
+            recommendation.risk_level = RiskLevel.LOW
+            recommendation.approval_threshold = ApprovalLevel.ANALYST
+        
+        # Set expiration (recommendations expire after 7 days)
+        recommendation.expires_at = datetime.now() + timedelta(days=7)
+        
+        return recommendation
+    
+    def _apply_enhanced_guardrails(self, recommendation: PricingRecommendation) -> PricingRecommendation:
+        """Apply comprehensive guardrails and track violations"""
+        
+        violations = []
+        
+        if not recommendation.recommended_price or not recommendation.product_info:
+            return recommendation
+            
+        product = recommendation.product_info[0]
+        original_price = recommendation.recommended_price
+        adjusted_price = original_price
+        
+        # Guardrail 1: Price cannot be below cost + minimum margin
+        min_price = product.cost_price * self.guardrail_config["price_below_cost_multiplier"]
+        if adjusted_price < min_price:
+            violations.append(GuardrailViolation(
+                rule_name="minimum_cost_margin",
+                violation_type="price_below_minimum",
+                original_value=adjusted_price,
+                adjusted_value=min_price,
+                explanation=f"Price adjusted from ${adjusted_price:.2f} to ${min_price:.2f} to maintain minimum {(self.guardrail_config['price_below_cost_multiplier']-1)*100:.0f}% markup above cost",
+                severity=RiskLevel.HIGH
+            ))
+            adjusted_price = min_price
+        
+        # Guardrail 2: Maximum price change limit
+        max_change = product.current_price * (self.guardrail_config["max_price_change_percent"] / 100)
+        if abs(adjusted_price - product.current_price) > max_change:
+            if adjusted_price > product.current_price:
+                new_price = product.current_price + max_change
+            else:
+                new_price = product.current_price - max_change
+                
+            violations.append(GuardrailViolation(
+                rule_name="maximum_price_change",
+                violation_type="excessive_price_change",
+                original_value=adjusted_price,
+                adjusted_value=new_price,
+                explanation=f"Price change limited to {self.guardrail_config['max_price_change_percent']:.0f}% to prevent market shock",
+                severity=RiskLevel.MEDIUM
+            ))
+            adjusted_price = new_price
+        
+        # Guardrail 3: Margin validation
+        new_margin = ((adjusted_price - product.cost_price) / adjusted_price * 100) if adjusted_price > 0 else 0
+        
+        if new_margin < self.guardrail_config["min_margin_percent"]:
+            min_margin_price = product.cost_price / (1 - self.guardrail_config["min_margin_percent"] / 100)
+            violations.append(GuardrailViolation(
+                rule_name="minimum_margin",
+                violation_type="margin_too_low",
+                original_value=adjusted_price,
+                adjusted_value=min_margin_price,
+                explanation=f"Price adjusted to maintain minimum {self.guardrail_config['min_margin_percent']:.0f}% margin",
+                severity=RiskLevel.MEDIUM
+            ))
+            adjusted_price = min_margin_price
+            
+        elif new_margin > self.guardrail_config["max_margin_percent"]:
+            max_margin_price = product.cost_price / (1 - self.guardrail_config["max_margin_percent"] / 100)
+            violations.append(GuardrailViolation(
+                rule_name="maximum_margin",
+                violation_type="margin_too_high",
+                original_value=adjusted_price,
+                adjusted_value=max_margin_price,
+                explanation=f"Price adjusted to prevent excessive {new_margin:.1f}% margin",
+                severity=RiskLevel.LOW
+            ))
+            adjusted_price = max_margin_price
+        
+        # Guardrail 4: Confidence-based adjustments
+        if recommendation.confidence_score < self.guardrail_config["low_confidence_threshold"]:
+            violations.append(GuardrailViolation(
+                rule_name="low_confidence",
+                violation_type="insufficient_data",
+                original_value=recommendation.confidence_score,
+                adjusted_value=None,
+                explanation=f"Low confidence score ({recommendation.confidence_score:.2f}) - recommendation requires additional validation",
+                severity=RiskLevel.MEDIUM
+            ))
+        
+        # Update recommendation with guardrail results
+        recommendation.recommended_price = adjusted_price
+        recommendation.guardrail_violations = violations
+        
+        # Update reasoning with guardrail information
+        if violations:
+            guardrail_notes = "\n\nGUARDRAIL ADJUSTMENTS:\n" + "\n".join([
+                f"• {v.rule_name}: {v.explanation}" for v in violations
+            ])
+            recommendation.reasoning += guardrail_notes
+        
+        return recommendation
+
+    def submit_approval_request(self, approval_request: ApprovalRequest) -> bool:
+        """Submit an approval request for a recommendation"""
+        try:
+            if approval_request.recommendation_id not in self.active_recommendations:
+                raise ValueError("Recommendation not found")
+            
+            recommendation = self.active_recommendations[approval_request.recommendation_id]
+            
+            # Check if approver has sufficient authority
+            approver_levels = {
+                "analyst": ApprovalLevel.ANALYST,
+                "senior_analyst": ApprovalLevel.SENIOR_ANALYST,
+                "manager": ApprovalLevel.MANAGER,
+                "director": ApprovalLevel.DIRECTOR
+            }
+            
+            approver_level = approver_levels.get(approval_request.approver_role, ApprovalLevel.ANALYST)
+            required_level = recommendation.approval_threshold
+            
+            # Check if approver has sufficient authority (enum comparison)
+            if not self._has_approval_authority(approver_level, required_level):
+                raise ValueError(f"Insufficient approval authority. Required: {required_level}, Has: {approver_level}")
+            
+            # Update recommendation status
+            recommendation.approval_status = approval_request.decision
+            recommendation.approval_notes = approval_request.notes
+            recommendation.approved_by = approval_request.approver_id
+            recommendation.approved_at = approval_request.timestamp
+            
+            # Store approval in history
+            self.approval_history.append(approval_request)
+            
+            logger.info(f"Approval request processed for recommendation {approval_request.recommendation_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to process approval request: {e}")
+            return False
+
+    def _has_approval_authority(self, approver_level: ApprovalLevel, required_level: ApprovalLevel) -> bool:
+        """Check if approver has sufficient authority"""
+        level_hierarchy = {
+            ApprovalLevel.ANALYST: 1,
+            ApprovalLevel.SENIOR_ANALYST: 2,
+            ApprovalLevel.MANAGER: 3,
+            ApprovalLevel.DIRECTOR: 4
+        }
+        return level_hierarchy[approver_level] >= level_hierarchy[required_level]
+
+    def get_recommendation_by_id(self, recommendation_id: str) -> Optional[PricingRecommendation]:
+        """Get a recommendation by its ID"""
+        return self.active_recommendations.get(recommendation_id)
+
+    def get_pending_approvals(self, approver_role: str = None) -> List[PricingRecommendation]:
+        """Get all pending approval requests, optionally filtered by approver role"""
+        pending = [
+            rec for rec in self.active_recommendations.values()
+            if rec.approval_status == ApprovalStatus.PENDING
+        ]
+        
+        if approver_role:
+            approver_levels = {
+                "analyst": ApprovalLevel.ANALYST,
+                "senior_analyst": ApprovalLevel.SENIOR_ANALYST,
+                "manager": ApprovalLevel.MANAGER,
+                "director": ApprovalLevel.DIRECTOR
+            }
+            approver_level = approver_levels.get(approver_role, ApprovalLevel.ANALYST)
+            pending = [
+                rec for rec in pending
+                if self._has_approval_authority(approver_level, rec.approval_threshold)
+            ]
+        
+        return pending
+
     def _retrieve_context(self, query: PricingQuery):
         """Step 1: Retrieve relevant context from vector store or simple retriever"""
         logger.info(f"Retrieving context for query: {query.query}")
@@ -188,7 +442,7 @@ class PricingRAGAgent:
             validated_products.append(product)
         
         return validated_products
-    
+
     def _generate_recommendation(self, query: PricingQuery, retrieval_context, validated_products: list[ProductInfo]) -> PricingRecommendation:
         """Step 3: Generate pricing recommendation using LLM"""
         
@@ -199,50 +453,34 @@ class PricingRAGAgent:
         # Prepare context for LLM
         context_text = self._prepare_context_for_llm(retrieval_context, validated_products)
         
-        # Create system prompt based on best practices
-        system_prompt = self._create_system_prompt()
+        # Create messages
+        system_message = SystemMessage(content=self._create_system_prompt())
+        user_message = HumanMessage(content=self._create_user_prompt(query, context_text))
         
-        # Create user prompt with context
-        user_prompt = self._create_user_prompt(query, context_text)
+        # Generate response
+        response = self.llm.invoke([system_message, user_message])
         
-        try:
-            # Generate response using LLM
-            messages = [
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=user_prompt)
-            ]
-            
-            response = self.llm.invoke(messages)
-            
-            # Parse response into structured recommendation
-            recommendation = self._parse_llm_response(query, response.content, retrieval_context, validated_products)
-            
-            return recommendation
-            
-        except Exception as e:
-            logger.error(f"LLM generation failed: {e}")
-            # Fallback to rule-based recommendation
-            return self._generate_fallback_recommendation(query, retrieval_context, validated_products)
-    
-    def _create_system_prompt(self) -> str:
-        """Create system prompt following best practices"""
-        return """You are an expert pricing analyst for a retail company. Your role is to analyze product pricing data and provide clear, actionable pricing recommendations.
+        # Parse and return structured recommendation
+        return self._parse_llm_response(query, response.content, retrieval_context, validated_products)
 
-        Guidelines:
-        1. Always ground your recommendations in the provided data
-        2. Consider competitor pricing, inventory levels, sales performance, and margin targets
-        3. Provide specific price recommendations when possible
-        4. Explain your reasoning clearly and concisely
-        5. Identify approval requirements based on price change magnitude
-        6. Consider business context and market conditions
-        7. Suggest both conservative and aggressive pricing scenarios when relevant
+    def _create_system_prompt(self) -> str:
+        """Create system prompt for LLM"""
+        return """You are an expert pricing analyst AI assistant helping with retail pricing decisions. 
         
-        Response Format:
-        - Start with a clear recommendation summary
-        - Provide detailed reasoning with data support
+        Your role is to:
+        - Analyze product pricing data and market conditions
+        - Provide data-driven pricing recommendations
+        - Consider competitive positioning and profit margins
+        - Account for inventory levels and sales velocity
+        - Assess risks and business impact
+        
+        Guidelines for recommendations:
+        - Base recommendations on concrete data when available
+        - Clearly explain your reasoning
         - Include market context analysis
         - Specify confidence level (high/medium/low)
         - Recommend approval threshold if price changes are significant
+        - Consider financial impact and business risks
         
         Remember: Accuracy and actionability are paramount. If data is insufficient, state this clearly."""
     
@@ -257,13 +495,14 @@ class PricingRAGAgent:
         {context_text}
         
         Please provide a comprehensive pricing recommendation addressing this query. Include:
-        1. Specific pricing recommendation
+        1. Specific pricing recommendation with exact price if appropriate
         2. Detailed reasoning based on the data
         3. Market and competitive context
-        4. Confidence assessment
-        5. Any approval requirements or risk considerations
+        4. Risk assessment and confidence level
+        5. Financial impact considerations
+        6. Any approval requirements or risk considerations
         """
-    
+
     def _prepare_context_for_llm(self, retrieval_context, validated_products: list[ProductInfo]) -> str:
         """Prepare context text for LLM input"""
         context_parts = []
@@ -301,7 +540,7 @@ class PricingRAGAgent:
             context_parts.append(product_text)
         
         return "\n".join(context_parts)
-    
+
     def _parse_llm_response(self, query: PricingQuery, response_text: str, retrieval_context, validated_products: list[ProductInfo]) -> PricingRecommendation:
         """Parse LLM response into structured recommendation"""
         
@@ -323,15 +562,6 @@ class PricingRAGAgent:
         elif not any(p.competitor_prices for p in validated_products):
             confidence_score = 0.7
         
-        # Determine approval threshold
-        approval_threshold = "analyst"  # Default
-        if recommended_price and validated_products:
-            price_change_pct = abs((recommended_price - validated_products[0].current_price) / validated_products[0].current_price * 100)
-            if price_change_pct > 20:
-                approval_threshold = "manager"
-            elif price_change_pct > 10:
-                approval_threshold = "senior_analyst"
-        
         return PricingRecommendation(
             query=query.query,
             product_info=validated_products,
@@ -339,10 +569,9 @@ class PricingRAGAgent:
             reasoning=response_text,
             market_context=retrieval_context.market_summary + "\n" + retrieval_context.competitor_analysis,
             confidence_score=confidence_score,
-            recommended_price=recommended_price,
-            approval_threshold=approval_threshold
+            recommended_price=recommended_price
         )
-    
+
     def _generate_fallback_recommendation(self, query: PricingQuery, retrieval_context, validated_products: list[ProductInfo]) -> PricingRecommendation:
         """Generate recommendation without LLM (rule-based fallback)"""
         
@@ -394,49 +623,28 @@ class PricingRAGAgent:
             reasoning=reasoning,
             market_context=retrieval_context.market_summary,
             confidence_score=0.7,
-            recommended_price=recommended_price,
-            approval_threshold="analyst"
+            recommended_price=recommended_price
         )
-    
-    def _apply_guardrails(self, recommendation: PricingRecommendation) -> PricingRecommendation:
-        """Step 4: Apply guardrails and final validation"""
-        
-        # Guardrail 1: Check for unreasonable price recommendations
-        if recommendation.recommended_price and recommendation.product_info:
-            product = recommendation.product_info[0]
-            
-            # Don't recommend prices below cost
-            if recommendation.recommended_price < product.cost_price:
-                recommendation.recommended_price = product.cost_price * 1.1  # 10% markup minimum
-                recommendation.reasoning += "\n[GUARDRAIL] Adjusted price to maintain minimum 10% markup above cost."
-            
-            # Don't recommend extreme price changes (>50%)
-            max_change = product.current_price * 0.5
-            if abs(recommendation.recommended_price - product.current_price) > max_change:
-                if recommendation.recommended_price > product.current_price:
-                    recommendation.recommended_price = product.current_price + max_change
-                else:
-                    recommendation.recommended_price = product.current_price - max_change
-                recommendation.reasoning += "\n[GUARDRAIL] Limited price change to 50% to reduce market shock."
-                recommendation.approval_threshold = "manager"
-        
-        # Guardrail 2: Ensure factual consistency
-        if recommendation.confidence_score < 0.5:
-            recommendation.reasoning += "\n[GUARDRAIL] Low confidence recommendation - requires additional validation."
-            recommendation.approval_threshold = "manager"
-        
-        return recommendation
-    
-    def get_agent_status(self) -> Dict[str, Any]:
-        """Get status information about the agent"""
+
+    def get_agent_status(self) -> SystemStatus:
+        """Get comprehensive status information about the agent"""
         retrieval_method = "vector_store" if self.use_vector_store else "simple_retriever"
         collection_info = self.vector_store.get_collection_info() if self.use_vector_store else self.simple_retriever.get_collection_info()
         
-        status = {
-            "initialized": self.initialized,
-            "has_openai_key": bool(self.openai_api_key),
-            "retrieval_method": retrieval_method,
-            "data_summary": self.data_loader.get_products_summary() if self.initialized else {},
-            "vector_store_info": collection_info if self.initialized else {}
-        }
-        return status 
+        # Count pending approvals and active recommendations
+        pending_approvals = len([r for r in self.active_recommendations.values() if r.approval_status == ApprovalStatus.PENDING])
+        active_recommendations = len(self.active_recommendations)
+        
+        return SystemStatus(
+            initialized=self.initialized,
+            has_openai_key=bool(self.openai_api_key),
+            retrieval_method=retrieval_method,
+            data_summary=self.data_loader.get_products_summary() if self.initialized else {},
+            vector_store_info=collection_info if self.initialized else {},
+            pending_approvals=pending_approvals,
+            active_recommendations=active_recommendations
+        )
+
+
+# For backward compatibility, create an alias
+PricingRAGAgent = EnhancedPricingRAGAgent 
