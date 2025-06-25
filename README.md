@@ -1,64 +1,67 @@
-# 🚀 PriceWise AI: Enhanced Agentic Pricing System
+# ⚡ PriceWise AI: Real-Time Pricing Agent
 
-**Advanced Pricing Intelligence with Enterprise Guardrails & Approval Workflows**
+**High-Velocity Sales Event Optimizer with Price Elasticity Modeling & Demand Simulation**
 
-Welcome to **PriceWise AI** - an enterprise-grade agentic pricing system that combines Retrieval-Augmented Generation (RAG) with comprehensive guardrails and multi-level approval workflows for intelligent retail pricing decisions.
+Welcome to **PriceWise AI** - an enterprise-grade real-time pricing system designed for high-velocity sales events (Black Friday, flash sales, promotional periods). The system combines Retrieval-Augmented Generation (RAG) with advanced price elasticity modeling, demand simulation, and enterprise guardrails.
 
 ## 🎯 Project Vision
 
-Transform retail pricing through intelligent automation while maintaining enterprise risk management and compliance. This system progresses through three iterations:
+Transform retail pricing during high-velocity sales events through intelligent automation with real-time demand simulation and inventory management. This system progresses through three iterations:
 
-- **✅ Iteration 1**: RAG-powered analyst assistant with enhanced guardrails & approval workflows
+- **✅ Iteration 1**: Real-Time Pricing Agent with price elasticity modeling & demand simulation
 - **🔄 Iteration 2**: Semi-autonomous agent with financial simulation & planning capabilities  
 - **⏳ Iteration 3**: Multi-agent system with autonomous monitoring & execution
 
-## 🏆 Current Status: Enhanced Iteration 1 Complete
+## 🏆 Current Status: Real-Time Pricing Agent (Iteration 1) Complete
 
-### 🚀 **What's New in Enhanced Iteration 1**
+### ⚡ **Real-Time Pricing Agent Features**
 
-#### 🛡️ **Enterprise-Grade Guardrails**
-- **Automated Price Validation**: Prevents below-cost pricing and excessive changes
-- **Risk Assessment Engine**: 4-tier risk classification with automatic escalation
-- **Financial Impact Analysis**: Revenue projections and business impact assessment
-- **Margin Protection**: Enforced minimum/maximum margin thresholds
-- **Confidence Validation**: Low-confidence recommendation flagging
+#### 🧠 **Price Elasticity Modeling**
+- **Demand Simulation**: Calculate projected demand using `% change in demand = price_elasticity × % change in price`
+- **Scenario Analysis**: Show impact of ±5% and ±10% price changes on demand and revenue
+- **Revenue Optimization**: Maximize revenue while maintaining margin requirements
+- **Inventory Balance**: Prevent stockouts and manage excess inventory
+
+#### 📊 **High-Velocity Sales Event Optimization**
+- **Flash Sale Pricing**: Optimize prices for 6-hour flash sales with demand forecasting
+- **Black Friday Strategy**: Handle competitor price drops and high inventory scenarios
+- **Stockout Prevention**: Automatically increase prices when demand exceeds inventory
+- **Excess Inventory Management**: Reduce prices to clear stock while maintaining margins
+
+#### 🛡️ **Advanced Guardrails**
+- **Minimum Price Protection**: Never below `cost_price × (1 + target_margin_percent / 100)`
+- **Competitive Positioning**: Never more than 10% above highest competitor price
+- **Risk Assessment**: 4-tier classification with automatic approval escalation
+- **Financial Impact Analysis**: Revenue projections with quantified business impact
 
 #### 🔄 **Multi-Level Approval Workflows**
-- **Role-Based Authority**: Analyst → Senior Analyst → Manager → Director hierarchy
-- **Automatic Escalation**: Risk-based approval threshold assignment
-- **Complete Audit Trail**: Timestamps, approvers, and notes tracking
+- **Role-Based Authority**: Analyst ($50) → Senior Analyst ($150) → Manager ($500) → Director (unlimited)
+- **Price Change Limits**: Authority based on absolute dollar change amount
+- **Real-time Approval**: Instant approval/rejection with audit trail
 - **Authority Validation**: Prevents unauthorized pricing decisions
-- **Real-time Approval Dashboard**: Live queue management and status monitoring
-
-#### 🏷️ **Advanced Product Management**
-- **Interactive SKU Selection**: Product browser with search and filtering
-- **Individual Product Analysis**: Targeted recommendations for specific SKUs
-- **Competitive Intelligence**: Multi-competitor analysis and positioning
-- **Inventory Integration**: Stock level consideration in pricing strategy
-
-#### 📊 **Enhanced Analytics**
-- **Financial Impact Modeling**: Monthly revenue impact projections
-- **Guardrail Violation Tracking**: Complete adjustment logs with explanations
-- **Risk Categorization**: Automatic classification with detailed reasoning
-- **System Monitoring**: Real-time status and performance metrics
 
 ## 💡 Core Capabilities
 
-### **Intelligent Query Processing**
+### **Real-Time Demand Simulation**
 ```bash
-Query: "Should we reduce Nike Air Max prices by 80% for clearance?"
+Query: "Optimize Nike Air Max pricing for flash sale event"
 System: 
-├── 🛡️ Guardrails: Limits change to 50% maximum
-├── 📊 Risk Assessment: CRITICAL - Director approval required
-├── 💰 Financial Impact: $101k monthly revenue impact
-└── ✅ Recommendation: Adjusted price with violation tracking
+├── 📊 Current Demand: 24 units/day at $89.99
+├── 🧮 Price Scenarios:
+│   ├── -10%: $80.99 → 29 units/day → +$145 revenue
+│   ├── -5%: $85.49 → 26 units/day → +$78 revenue  
+│   ├── +5%: $94.49 → 22 units/day → +$99 revenue
+│   └── +10%: $98.99 → 20 units/day → +$180 revenue
+├── 📦 Inventory: 450 units (18 days supply)
+├── 🎯 Recommendation: $94.49 (balanced demand/inventory)
+└── ⚡ Approval: Senior Analyst required ($4.50 change)
 ```
 
-### **Advanced Risk Management**
-- **Automatic Risk Classification**: Low/Medium/High/Critical with financial thresholds
-- **Price Change Protection**: Prevents market-shocking price movements
-- **Authority Validation**: Ensures proper approval hierarchy
-- **Financial Safeguards**: Revenue impact assessment and escalation
+### **Inventory Risk Management**
+- **Stockout Detection**: Increase prices when simulated demand > stock
+- **Excess Inventory**: Reduce prices when demand << stock levels
+- **Days of Inventory**: Calculate runway based on demand projections
+- **Dynamic Adjustments**: Real-time price optimization based on sales velocity
 
 ### **Enterprise Reliability**
 - **100% Uptime**: Dual retrieval system with automatic fallbacks
@@ -66,23 +69,30 @@ System:
 - **Graceful Degradation**: Continues operation even without OpenAI API
 - **Comprehensive Logging**: Full audit trail for compliance
 
-## 🏗️ System Architecture
+## 🏗️ Repository Organization
 
-```mermaid
-graph TB
-    A[User Query] --> B[Enhanced RAG Agent]
-    B --> C[Retrieval System]
-    C --> D[Vector Store + Text Fallback]
-    B --> E[Business Rules Engine]
-    B --> F[Guardrails Validation]
-    F --> G[Risk Assessment]
-    G --> H[Approval Workflow]
-    H --> I[Financial Impact Analysis]
-    I --> J[Final Recommendation]
-    
-    K[SKU Selector] --> B
-    L[Approval Dashboard] --> H
-    M[System Monitor] --> N[Status & Metrics]
+```
+price-wise/
+├── 📁 iteration_1/                    # Complete Iteration 1 Implementation
+│   ├── 📁 src/                        # Core source code
+│   │   ├── pricing_agent.py           # Real-Time Pricing Agent with elasticity modeling
+│   │   ├── models.py                  # Enhanced data models with approval workflows
+│   │   ├── data_loader.py             # Product data management
+│   │   ├── vector_store.py            # ChromaDB vector search
+│   │   └── simple_retriever.py        # Text-based fallback retrieval
+│   ├── streamlit_app.py               # Real-Time Pricing Web Interface
+│   ├── main.py                        # FastAPI server
+│   ├── demo_pricing_agent.py          # Interactive demonstration
+│   ├── demo_enhanced_agent.py         # Advanced features demo
+│   ├── requirements.txt               # Dependencies
+│   └── ITERATION_1_SUMMARY.md         # Detailed implementation summary
+├── 📁 data/                           # Shared data resources
+│   ├── apparel_pricing_data.csv       # 1000+ product dataset
+│   └── chroma_db/                     # Vector database storage
+├── 📁 context_notepads/               # Project documentation & guidelines
+├── README.md                          # This file
+├── ENHANCEMENT_COMPLETION_SUMMARY.md  # Enhancement completion details
+└── .gitignore                         # Git ignore patterns
 ```
 
 ## 🚀 Quick Start
@@ -100,17 +110,17 @@ pip install -r requirements.txt
 export OPENAI_API_KEY="your-key-here"
 ```
 
-### **2. Run Enhanced Demo**
+### **2. Launch Real-Time Pricing Interface**
 ```bash
-# Comprehensive feature demonstration
-python demo_enhanced_agent.py
-```
-
-### **3. Launch Web Interface**
-```bash
-# Start enhanced Streamlit app
+# Start Real-Time Pricing Web App
 streamlit run streamlit_app.py
 # Access at: http://localhost:8501
+```
+
+### **3. Run Demand Simulation Demo**
+```bash
+# Interactive demonstration with price elasticity
+python demo_pricing_agent.py
 ```
 
 ### **4. Start API Server**
@@ -122,125 +132,102 @@ python main.py
 
 ## 🖥️ User Interfaces
 
-### **Enhanced Streamlit Web App**
-- **Query Assistant**: Natural language pricing analysis with guardrails
-- **SKU Analysis**: Interactive product selection and targeted analysis
-- **Approval Dashboard**: Real-time approval queue management
-- **Query History**: Complete audit trail with risk assessment
+### **Real-Time Pricing Web App**
+- **Flash Sale Optimizer**: 6-hour flash sale pricing optimization
+- **Black Friday Strategy**: Handle competitor drops and inventory clearance
+- **Stockout Prevention**: Demand surge management with price increases
+- **Demand Simulation**: Price elasticity analysis with revenue projections
+
+### **Example Scenarios**
+- **⚡ Flash Sale Optimization**: "What should be the optimal price for Nike Air Max sneakers during a 6-hour flash sale?"
+- **🛍️ Black Friday Strategy**: "Optimize Adidas T-shirt pricing during Black Friday with competitor price drops"
+- **🚨 Stockout Prevention**: "Product is selling 3x faster than expected. Should we increase price?"
+- **📊 Demand Simulation**: "Simulate demand scenarios with ±10% price changes during peak sales"
 
 ### **RESTful API**
-- **Query Processing**: `POST /query` with enhanced validation
+- **Real-Time Query Processing**: `POST /query` with demand simulation
 - **System Status**: `GET /status` with approval metrics
 - **Product Management**: Search, filter, and analyze endpoints
 - **Health Monitoring**: Comprehensive system health checks
 
-### **Command-Line Demo**
-- **Guardrails Testing**: Extreme scenario validation
-- **Approval Simulation**: Multi-level workflow demonstration
-- **Risk Assessment**: Four-tier risk classification examples
-- **System Monitoring**: Status and performance reporting
+## 📊 Real-Time Pricing Logic
 
-## 📊 Example Scenarios
-
-### **Scenario 1: Extreme Price Change (Guardrails)**
-```python
-Input: "Reduce all Nike prices by 80%"
-Output:
-├── 🛡️ Guardrail: Limited to 50% maximum change
-├── 📊 Risk Level: CRITICAL
-├── 🔄 Approval: Director required
-└── 💰 Impact: $500k revenue reduction estimated
+### **Price Elasticity Formula**
+```
+% change in demand = price_elasticity × % change in price
 ```
 
-### **Scenario 2: Multi-Level Approval**
+### **Inventory-Based Adjustments**
 ```python
-Risk Assessment:
-├── Low Risk (0-10% change) → Analyst approval
-├── Medium Risk (10-25% change) → Senior Analyst approval  
-├── High Risk (25-40% change) → Manager approval
-└── Critical Risk (40%+ change) → Director approval
+if simulated_demand > stock_level:
+    # Increase price to prevent stockout
+    recommended_action = "INCREASE_PRICE"
+elif simulated_demand << stock_level:
+    # Reduce price to clear inventory
+    recommended_action = "DECREASE_PRICE"
+else:
+    # Maintain current pricing
+    recommended_action = "MAINTAIN_PRICE"
 ```
 
-### **Scenario 3: SKU-Specific Analysis**
+### **Guardrail Constraints**
 ```python
-Selected Product: APP10005 (Under Armour Socks)
-Analysis:
-├── 📋 Current: $71.01 (49% margin)
-├── 🎯 Recommended: $68.00 (47% margin)
-├── 📊 Risk: Medium (4.2% change)
-└── 🔄 Approval: Senior Analyst required
+min_price = cost_price × (1 + target_margin_percent / 100)
+max_price = highest_competitor_price × 1.10
 ```
 
 ## 📈 Performance Metrics
 
 | Metric | Performance | Status |
 |--------|-------------|---------|
-| **Query Response Time** | < 3 seconds | ✅ Excellent |
-| **System Reliability** | 100% uptime | ✅ Enterprise |
-| **Data Coverage** | 1,000+ products | ✅ Comprehensive |
-| **Risk Assessment** | 4-tier classification | ✅ Advanced |
-| **Approval Accuracy** | 100% authority validation | ✅ Secure |
+| **Query Response Time** | < 3 seconds | ✅ Real-Time |
+| **Demand Simulation** | ±5% and ±10% scenarios | ✅ Advanced |
+| **System Reliability** | 100% uptime with fallbacks | ✅ Enterprise |
+| **Data Coverage** | 1,000+ products with elasticity | ✅ Comprehensive |
+| **Approval Workflow** | Role-based authority limits | ✅ Secure |
 | **Cross-Platform** | Mac/Windows/Linux | ✅ Universal |
 
 ## 🛡️ Enterprise Features
 
 ### **Security & Compliance**
-- Role-based access control with approval hierarchies
+- Role-based approval authority with dollar limits
 - Complete audit trails for regulatory compliance
 - Input validation and sanitization
 - Secure API key management
 
 ### **Risk Management**
-- Automated price validation and adjustment
-- Financial impact assessment and escalation
-- Confidence scoring with validation requirements
+- Price elasticity validation and demand simulation
+- Financial impact assessment with revenue projections
+- Inventory risk analysis and stockout prevention
 - Business rule enforcement with violation tracking
 
 ### **Operational Excellence**
 - Graceful degradation and error handling
-- Real-time monitoring and alerting
-- Performance optimization with caching
-- Scalable architecture for production deployment
+- Real-time demand forecasting and optimization
+- Cross-platform compatibility with automatic fallbacks
+- Comprehensive logging and monitoring
 
-## 🔮 Roadmap: Next Iterations
+## 🔮 Future Roadmap
 
-### **Iteration 2: Semi-Autonomous Agent** 🔄
-- **Financial Simulation Tools**: Advanced elasticity modeling
-- **Multi-SKU Optimization**: Portfolio-level pricing optimization
-- **Short-term Memory**: Context retention across interactions
-- **ReAct Reasoning**: Enhanced decision-making patterns
+### **Iteration 2: Semi-Autonomous Agent**
+- Advanced financial simulation and planning
+- Multi-product portfolio optimization
+- Automated A/B testing capabilities
+- Enhanced machine learning models
 
-### **Iteration 3: Multi-Agent System** ⏳
-- **Autonomous Monitoring**: Real-time market surveillance
-- **Geographic Pricing**: Location-based pricing strategies
-- **External Integration**: Live competitor feeds and market data
-- **Autonomous Execution**: Approved pricing changes implementation
+### **Iteration 3: Multi-Agent System**
+- Autonomous monitoring and execution
+- Real-time market intelligence
+- Competitive response automation
+- Advanced analytics and reporting
 
-## 🏆 Key Achievements
+## 📞 Support & Documentation
 
-✅ **Enterprise-Grade Guardrails**: Comprehensive risk prevention  
-✅ **Multi-Level Approvals**: Proper authority validation  
-✅ **Enhanced User Experience**: Intuitive interfaces with SKU selection  
-✅ **Risk Management**: Automatic assessment with financial impact  
-✅ **Operational Excellence**: 100% reliability with fallbacks  
-✅ **Complete Auditability**: Full recommendation and approval tracking  
-
-## 📚 Documentation
-
-- **[Iteration 1 Summary](iteration_1/ITERATION_1_SUMMARY.md)**: Complete technical overview
-- **[API Documentation](http://localhost:8000/docs)**: Interactive API reference
-- **[Demo Scripts](iteration_1/demo_enhanced_agent.py)**: Comprehensive examples
-- **[Architecture Guide](context_notepads/iteration_1_architecture.jpg)**: Visual system design
-
-## 🤝 Contributing
-
-This is a capstone project demonstrating enterprise AI system design. For questions or collaboration:
-
-1. Review the iteration summaries and architecture
-2. Test the enhanced demo scenarios
-3. Explore the multi-interface design
-4. Consider the progression to Iteration 2
+- **📖 Implementation Guide**: `iteration_1/ITERATION_1_SUMMARY.md`
+- **🚀 Enhancement Details**: `ENHANCEMENT_COMPLETION_SUMMARY.md`
+- **🎯 Project Context**: `context_notepads/` directory
+- **💻 Live Demo**: Run `streamlit run iteration_1/streamlit_app.py`
 
 ---
 
-**🚀 Enhanced PriceWise AI Iteration 1** - Production-ready pricing intelligence with enterprise guardrails and approval workflows.
+**PriceWise AI** - Transforming retail pricing through intelligent real-time optimization ⚡

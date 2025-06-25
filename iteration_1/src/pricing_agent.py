@@ -465,43 +465,64 @@ class EnhancedPricingRAGAgent:
 
     def _create_system_prompt(self) -> str:
         """Create system prompt for LLM"""
-        return 
-        """You are an expert pricing analyst AI assistant helping with retail pricing decisions. 
-        
-        Your role is to:
-        - Analyze product pricing data and market conditions
-         - Provide data-driven pricing recommendations with the goal of maximising revenue
-        - Consider competitive positioning and profit margins
-        - Account for inventory levels and sales velocity
-        - Assess risks and business impact
-        
-        Guidelines for recommendations:
-        - Base recommendations on concrete data when available
-        - Clearly explain your reasoning
-        - Include market context analysis
-        - Specify confidence level (high/medium/low)
-        - Recommend approval threshold if price changes are significant
-        - Consider financial impact and business risks
-        
-        Remember: Accuracy and actionability are paramount. If data is insufficient, state this clearly."""
+        return """You are a Real-Time Pricing Analyst AI designed to support human analysts during high-velocity sales events (such as Black Friday, flash sales, promotional periods, or peak demand periods). Your objective is to dynamically adjust product prices to maximize revenue, hit margin goals, and manage inventory efficiently — using data-driven strategies including price elasticity modeling.
+
+You must consider the following inputs for each item:
+- Competitor Prices: Stay competitive in a fast-moving market.
+- Target Margin: Ensure prices meet or exceed the desired profit margin.
+- Hourly Sales Trend: Use the last 6–12 hours of sales data to detect surges or drops in demand.
+- Stock Levels: Ensure price moves help avoid stockouts or excessive leftover inventory.
+- Price Elasticity: A measure of how demand is expected to change with price. Use this to simulate future demand at new price points.
+
+Additional Instructions:
+1. Estimate Total Sales for the Day: Use current hourly sales and adapt to the sales event profile. For high-velocity events, use patterns like [2, 3, 5, 8, 12, 15, 18, 20, 22, 25, 20, 18, 15, 12, 10, 8, 6, 4, 3, 2, 1, 1, 1, 1] to forecast demand for the full day.
+
+2. Simulate New Demand: Use the price_elasticity value to simulate how total demand would change if price increases or decreases by ±5% or ±10%.
+   Formula: % change in demand = price_elasticity × % change in price
+
+3. Adjust Price Based on Inventory:
+   - If simulated demand exceeds stock → increase the price.
+   - If simulated demand is much lower than stock → reduce the price.
+
+4. Follow Pricing Guardrails:
+   - Never recommend a price below: cost_price × (1 + target_margin_percent / 100)
+   - Never recommend a price more than 10% above the highest competitor price
+
+Summary of Pricing Logic:
+- Simulate demand using price elasticity before recommending price.
+- If stockout risk is detected, raise the price (within guardrails).
+- If excess inventory is projected, lower the price (within constraints).
+- Always justify the recommendation using data and simulation insights.
+
+Remember: Speed and accuracy are critical during high-velocity sales events. Provide clear, actionable recommendations with quantified impact."""
     
     def _create_user_prompt(self, query: PricingQuery, context_text: str) -> str:
         """Create user prompt with context and query"""
         return f"""
-        Pricing Query: {query.query}
+        PRICING QUERY: {query.query}
         
-        Additional Context: {query.context or "None provided"}
+        ADDITIONAL CONTEXT: {query.context or "High-velocity sales event analysis"}
         
-        Relevant Product Data and Market Analysis:
+        PRODUCT DATA AND MARKET ANALYSIS:
         {context_text}
         
-        Please provide a comprehensive pricing recommendation addressing this query. Include:
-        1. Specific pricing recommendation with exact price if appropriate
-        2. Detailed reasoning based on the data
-        3. Market and competitive context
-        4. Risk assessment and confidence level
-        5. Financial impact considerations
-        6. Any approval requirements or risk considerations
+        REQUIRED ANALYSIS:
+        1. DEMAND SIMULATION: Calculate projected daily demand using hourly sales trends and price elasticity
+        2. INVENTORY RISK ASSESSMENT: Compare simulated demand vs. current stock levels
+        3. PRICE OPTIMIZATION: Recommend optimal price considering:
+           - Competitor positioning (stay within 10% of highest competitor price)
+           - Margin requirements (maintain minimum: cost × (1 + target_margin%))
+           - Inventory balance (avoid stockouts or excess inventory)
+        4. SCENARIO ANALYSIS: Show impact of ±5% and ±10% price changes on demand and revenue
+        5. ACTIONABLE RECOMMENDATION: Provide specific price with quantified business impact
+
+        FORMAT YOUR RESPONSE WITH:
+        - Recommended Price: $X.XX
+        - Expected Daily Demand: X units
+        - Revenue Impact: $X,XXX
+        - Inventory Status: [Balanced/Stockout Risk/Excess Inventory]
+        - Confidence Level: [High/Medium/Low]
+        - Reasoning: Detailed explanation with calculations
         """
 
     def _prepare_context_for_llm(self, retrieval_context, validated_products: list[ProductInfo]) -> str:
@@ -518,16 +539,30 @@ class EnhancedPricingRAGAgent:
         context_parts.append(retrieval_context.competitor_analysis)
         context_parts.append("")
         
-        # Add detailed product information
+        # Add detailed product information with enhanced analytics
         context_parts.append("PRODUCT DETAILS:")
         for product in validated_products[:3]:  # Limit to top 3 for context window
             # Calculate metrics
             current_margin = ((product.current_price - product.cost_price) / product.current_price * 100) if product.current_price > 0 else 0
             recent_sales = sum(product.hourly_sales) if product.hourly_sales else 0
             avg_competitor_price = sum(product.competitor_prices) / len(product.competitor_prices) if product.competitor_prices else 0
+            max_competitor_price = max(product.competitor_prices) if product.competitor_prices else product.current_price
+            min_margin_price = product.cost_price * (1 + product.target_margin_percent / 100)
+            
+            # Calculate demand simulation scenarios
+            price_scenarios = []
+            for price_change in [-10, -5, 0, 5, 10]:
+                new_price = product.current_price * (1 + price_change / 100)
+                demand_change = product.price_elasticity * price_change
+                new_demand_multiplier = 1 + (demand_change / 100)
+                estimated_daily_demand = recent_sales * 4 * new_demand_multiplier  # 6h to 24h extrapolation
+                revenue_impact = (new_price - product.current_price) * estimated_daily_demand
+                price_scenarios.append(f"{price_change:+d}%: ${new_price:.2f} → {estimated_daily_demand:.0f} units/day → ${revenue_impact:+,.0f} revenue impact")
             
             product_text = f"""
             Product: {product.item_name} (SKU: {product.item_id})
+            
+            CURRENT METRICS:
             - Current Price: ${product.current_price:.2f}
             - Cost Price: ${product.cost_price:.2f}
             - Current Margin: {current_margin:.1f}%
@@ -535,8 +570,23 @@ class EnhancedPricingRAGAgent:
             - Stock Level: {product.stock_level} units
             - Recent Sales (6h): {recent_sales} units
             - Price Elasticity: {product.price_elasticity}
+            
+            COMPETITIVE LANDSCAPE:
             - Avg Competitor Price: ${avg_competitor_price:.2f}
+            - Max Competitor Price: ${max_competitor_price:.2f}
             - Individual Competitor Prices: {', '.join([f'${p:.2f}' for p in product.competitor_prices])}
+            
+            PRICING CONSTRAINTS:
+            - Minimum Price (Margin): ${min_margin_price:.2f}
+            - Maximum Price (Competition): ${max_competitor_price * 1.1:.2f}
+            
+            DEMAND SIMULATION SCENARIOS:
+            {chr(10).join(price_scenarios)}
+            
+            INVENTORY ANALYSIS:
+            - Current Stock: {product.stock_level} units
+            - Estimated Daily Demand (current price): {recent_sales * 4:.0f} units
+            - Days of Inventory: {(product.stock_level / max(recent_sales * 4, 1)):.1f} days
             """
             context_parts.append(product_text)
         

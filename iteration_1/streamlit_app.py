@@ -332,27 +332,27 @@ def create_example_queries():
     
     examples = [
         {
-            "title": "🎯 Specific Product Analysis",
-            "query": "What is the recommended price for Product SKU APP10000 given that our main competitor lowered their price by 10% yesterday?",
-            "context": "Competitor price reduction scenario",
+            "title": "⚡ Flash Sale Optimization",
+            "query": "What should be the optimal price for Nike Air Max sneakers (APP10001) during a 6-hour flash sale event?",
+            "context": "Flash sale event - high demand expected, need to balance inventory and revenue",
+            "product_ids": "APP10001"
+        },
+        {
+            "title": "🛍️ Black Friday Strategy",
+            "query": "Optimize pricing for Adidas T-shirts during Black Friday considering competitor price drops and high inventory levels",
+            "context": "Black Friday event - competitors reduced prices by 15%, high inventory needs clearance",
+            "product_ids": ""
+        },
+        {
+            "title": "🚨 Stockout Prevention",
+            "query": "Product APP10000 is selling 3x faster than expected. Should we increase the price to prevent stockout?",
+            "context": "High-velocity sales event - demand surge detected, limited inventory",
             "product_ids": "APP10000"
         },
         {
-            "title": "🏷️ Brand Strategy",
-            "query": "Should we increase prices for Adidas T-shirts to improve our profit margin?",
-            "context": "Margin optimization for brand category",
-            "product_ids": ""
-        },
-        {
-            "title": "⚖️ Competitive Analysis",
-            "query": "Which Nike products are overpriced compared to competitors?",
-            "context": "Competitive pricing analysis",
-            "product_ids": ""
-        },
-        {
-            "title": "🌍 Market-Based Pricing",
-            "query": "Recommend pricing for Under Armour Socks (APP10005) considering current market conditions",
-            "context": "Market-based pricing recommendation",
+            "title": "📊 Demand Simulation",
+            "query": "Simulate demand scenarios for Under Armour Socks (APP10005) with ±10% price changes during peak sales period",
+            "context": "Peak sales period - need price elasticity analysis and revenue optimization",
             "product_ids": "APP10005"
         }
     ]
@@ -375,15 +375,15 @@ def main():
     # Header
     st.markdown("""
     <div class="main-header">
-        <h1>💰 PriceWise AI - Enhanced Pricing Agent</h1>
-        <p>RAG-powered Pricing Analyst with Guardrails & Approval Workflows</p>
+        <h1>⚡ PriceWise AI - Real-Time Pricing Agent</h1>
+        <p>High-Velocity Sales Event Optimizer with Price Elasticity Modeling & Demand Simulation</p>
     </div>
     """, unsafe_allow_html=True)
     
     # Initialize agent if needed
     if not st.session_state.agent_initialized:
-        st.info("🚀 Welcome to Enhanced PriceWise AI! Click below to initialize the pricing agent.")
-        if st.button("Initialize Enhanced Pricing Agent", type="primary"):
+        st.info("⚡ Welcome to Real-Time PriceWise AI! Click below to initialize the high-velocity pricing agent.")
+        if st.button("Initialize Real-Time Pricing Agent", type="primary"):
             initialize_agent()
         return
     
@@ -396,7 +396,7 @@ def main():
     st.markdown("---")
     
     # Main query interface
-    st.subheader("🤖 Ask the Enhanced Pricing Agent")
+    st.subheader("⚡ Ask the Real-Time Pricing Agent")
     
     # Query form
     with st.form("pricing_query"):
@@ -412,9 +412,9 @@ def main():
             del st.session_state.example_product_ids
         
         query = st.text_area(
-            "Your Pricing Question",
+            "Your Real-Time Pricing Question",
             value=default_query,
-            placeholder="e.g., Should we increase the price of Nike sneakers given current market conditions?",
+            placeholder="e.g., What should be the optimal price for Nike sneakers during a flash sale to maximize revenue while managing inventory?",
             height=100
         )
         
@@ -450,7 +450,7 @@ def main():
             )
             
             # Process query
-            with st.spinner("🤖 Analyzing your pricing question with enhanced guardrails..."):
+            with st.spinner("🤖 Analyzing your pricing question with guardrails..."):
                 recommendation = st.session_state.agent.process_query(pricing_query)
             
             # Store current recommendation
