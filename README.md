@@ -81,10 +81,7 @@ price-wise/
 │   │   ├── vector_store.py            # ChromaDB vector search
 │   │   └── simple_retriever.py        # Text-based fallback retrieval
 │   ├── streamlit_app.py               # Real-Time Pricing Web Interface
-│   ├── demo_pricing_agent.py          # Interactive demonstration
-│   ├── demo_enhanced_agent.py         # Advanced features demo
-│   ├── requirements.txt               # Dependencies
-│   └── test_streamlit_basic.py        # Testing suite
+│   └── requirements.txt               # Dependencies
 ├── 📁 data/                           # Shared data resources
 │   ├── apparel_pricing_data.csv       # 1000+ product dataset
 │   └── chroma_db/                     # Vector database storage
@@ -115,17 +112,12 @@ streamlit run streamlit_app.py
 # Access at: http://localhost:8501
 ```
 
-### **3. Run Demand Simulation Demo**
-```bash
-# Interactive demonstration with price elasticity
-python demo_pricing_agent.py
-```
-
-### **4. Alternative: Run Enhanced Demo**
-```bash
-# Launch enhanced agent demonstration
-python demo_enhanced_agent.py
-```
+### **3. Explore Example Scenarios**
+The Streamlit interface includes built-in example queries:
+- ⚡ Flash Sale Optimization
+- 🛍️ Black Friday Strategy  
+- 🚨 Stockout Prevention
+- 📊 Demand Simulation
 
 ## 🖥️ User Interfaces
 
@@ -141,10 +133,10 @@ python demo_enhanced_agent.py
 - **🚨 Stockout Prevention**: "Product is selling 3x faster than expected. Should we increase price?"
 - **📊 Demand Simulation**: "Simulate demand scenarios with ±10% price changes during peak sales"
 
-### **Interactive Demos**
-- **Enhanced Agent Demo**: Advanced pricing scenarios with approval workflows
-- **Basic Agent Demo**: Simple command-line pricing analysis
-- **Streamlit Test Suite**: Automated testing interface
+### **Interactive Features**
+- **Built-in Examples**: Pre-configured pricing scenarios you can try instantly
+- **Custom Queries**: Ask any pricing question with real-time analysis
+- **Approval Workflows**: Role-based pricing decision management
 
 ## 📊 Real-Time Pricing Logic
 
@@ -220,9 +212,8 @@ max_price = highest_competitor_price × 1.10
 ## 📞 Support & Documentation
 
 - **🎯 Project Context**: `context_notepads/` directory
-- **💻 Live Demo**: Run `streamlit run iteration_1/streamlit_app.py`
-- **🧪 Testing**: Run `python iteration_1/test_streamlit_basic.py`
-- **📱 Interactive Demos**: `iteration_1/demo_pricing_agent.py` and `iteration_1/demo_enhanced_agent.py`
+- **💻 Live Interface**: Run `streamlit run iteration_1/streamlit_app.py`
+- **🔧 Source Code**: Explore `iteration_1/src/` directory for implementation details
 
 ---
 
