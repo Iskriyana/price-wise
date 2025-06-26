@@ -28,7 +28,7 @@ iteration_1/
 │   ├── simple_retriever.py # Text-based fallback search
 │   └── vector_store.py     # ChromaDB semantic search
 ├── streamlit_app.py        # 🎨 Interactive web UI
-├── main.py                # 🚀 FastAPI server
+├── streamlit_app.py        # 🚀 Real-Time Pricing Web Interface
 ├── demo_pricing_agent.py  # 📱 CLI demonstration
 └── requirements.txt       # Dependencies
 ```
@@ -43,7 +43,7 @@ iteration_1/
 - **Visual Analytics**: Product distribution charts and metrics
 - **Real-time Processing**: Live agent initialization and query processing
 
-### 2. FastAPI REST API ✅ TESTED
+### 2. Interactive Demos ✅ TESTED
 - **Endpoints**: `/health`, `/query`, `/products/search`, `/status`
 - **Interactive Docs**: Swagger UI at `/docs`
 - **JSON API**: Structured request/response format
@@ -191,7 +191,6 @@ Products Analyzed: 3 relevant items
 
 ### Current Status ✅ RUNNING
 - **Streamlit UI**: http://localhost:8501 (Active)
-- **FastAPI Server**: Available on port 8000
 - **Agent Status**: Initialized with 1000 products
 - **Retrieval Method**: Text-based fallback (100% functional)
 
@@ -206,8 +205,8 @@ pip install -r requirements.txt
 # Run web UI (Currently Running)
 streamlit run streamlit_app.py
 
-# Run API server  
-python main.py
+# Run enhanced demo
+python demo_enhanced_agent.py
 
 # Run demo
 python demo_pricing_agent.py
@@ -258,7 +257,7 @@ This iteration provides a solid foundation for Iteration 2 development:
 - **Data Models**: Pydantic schemas for structured data
 - **Data Loader**: Product dataset processing and search
 - **Business Logic**: Pricing validation and calculations
-- **API Framework**: FastAPI server structure
+- **Web Framework**: Streamlit interface structure
 - **Testing Framework**: Validation and quality assurance
 
 ### Next Steps for Iteration 2

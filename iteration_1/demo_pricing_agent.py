@@ -151,7 +151,7 @@ def main():
         print("✅ Demo completed successfully!")
         print()
         print("To run the web API:")
-        print("   python main.py")
+        print("   streamlit run streamlit_app.py")
         print()
         print("To test specific queries:")
         print("   curl -X POST http://localhost:8000/query \\")

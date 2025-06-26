@@ -11,9 +11,7 @@ chromadb==0.4.15
 pandas==2.0.3
 numpy==1.24.4
 
-# Web Framework for API
-fastapi==0.100.0
-uvicorn==0.23.0
+# Web Framework removed - using Streamlit instead
 
 # Environment Management
 python-dotenv==1.0.0
