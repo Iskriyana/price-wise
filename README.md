@@ -81,17 +81,15 @@ price-wise/
 │   │   ├── vector_store.py            # ChromaDB vector search
 │   │   └── simple_retriever.py        # Text-based fallback retrieval
 │   ├── streamlit_app.py               # Real-Time Pricing Web Interface
-│   ├── main.py                        # FastAPI server
 │   ├── demo_pricing_agent.py          # Interactive demonstration
 │   ├── demo_enhanced_agent.py         # Advanced features demo
 │   ├── requirements.txt               # Dependencies
-│   └── ITERATION_1_SUMMARY.md         # Detailed implementation summary
+│   └── test_streamlit_basic.py        # Testing suite
 ├── 📁 data/                           # Shared data resources
 │   ├── apparel_pricing_data.csv       # 1000+ product dataset
 │   └── chroma_db/                     # Vector database storage
 ├── 📁 context_notepads/               # Project documentation & guidelines
 ├── README.md                          # This file
-├── ENHANCEMENT_COMPLETION_SUMMARY.md  # Enhancement completion details
 └── .gitignore                         # Git ignore patterns
 ```
 
@@ -123,11 +121,10 @@ streamlit run streamlit_app.py
 python demo_pricing_agent.py
 ```
 
-### **4. Start API Server**
+### **4. Alternative: Run Enhanced Demo**
 ```bash
-# Launch FastAPI server
-python main.py
-# API docs at: http://localhost:8000/docs
+# Launch enhanced agent demonstration
+python demo_enhanced_agent.py
 ```
 
 ## 🖥️ User Interfaces
@@ -144,11 +141,10 @@ python main.py
 - **🚨 Stockout Prevention**: "Product is selling 3x faster than expected. Should we increase price?"
 - **📊 Demand Simulation**: "Simulate demand scenarios with ±10% price changes during peak sales"
 
-### **RESTful API**
-- **Real-Time Query Processing**: `POST /query` with demand simulation
-- **System Status**: `GET /status` with approval metrics
-- **Product Management**: Search, filter, and analyze endpoints
-- **Health Monitoring**: Comprehensive system health checks
+### **Interactive Demos**
+- **Enhanced Agent Demo**: Advanced pricing scenarios with approval workflows
+- **Basic Agent Demo**: Simple command-line pricing analysis
+- **Streamlit Test Suite**: Automated testing interface
 
 ## 📊 Real-Time Pricing Logic
 
@@ -223,10 +219,10 @@ max_price = highest_competitor_price × 1.10
 
 ## 📞 Support & Documentation
 
-- **📖 Implementation Guide**: `iteration_1/ITERATION_1_SUMMARY.md`
-- **🚀 Enhancement Details**: `ENHANCEMENT_COMPLETION_SUMMARY.md`
 - **🎯 Project Context**: `context_notepads/` directory
 - **💻 Live Demo**: Run `streamlit run iteration_1/streamlit_app.py`
+- **🧪 Testing**: Run `python iteration_1/test_streamlit_basic.py`
+- **📱 Interactive Demos**: `iteration_1/demo_pricing_agent.py` and `iteration_1/demo_enhanced_agent.py`
 
 ---
 
