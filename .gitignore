@@ -194,4 +194,20 @@ cython_debug/
 .cursorindexingignore
 
 # Custom
-content_notepads/
+content_notepads/*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+.DS_Store
+*.log
+*.tmp
+.pytest_cache/
+.coverage
+.venv/
+.env
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

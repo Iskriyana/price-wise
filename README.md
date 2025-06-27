@@ -1,14 +1,14 @@
 # ⚡ PriceWise AI: Real-Time Pricing Agent
 
-**High-Velocity Sales Event Optimizer with Price Elasticity Modeling & Demand Simulation**
+**High-Velocity Sales Event Optimizer with Price Elasticity-Based Demand Simulation**
 
-Welcome to **PriceWise AI** - an enterprise-grade real-time pricing system designed for high-velocity sales events (Black Friday, flash sales, promotional periods). The system combines Retrieval-Augmented Generation (RAG) with advanced price elasticity modeling, demand simulation, and enterprise guardrails.
+Welcome to **PriceWise AI** - an enterprise-grade real-time pricing system designed for high-velocity sales events (Black Friday, flash sales, promotional periods). The system combines Retrieval-Augmented Generation (RAG) with price elasticity-based demand simulation, revenue optimization, and enterprise guardrails.
 
 ## 🎯 Project Vision
 
 Transform retail pricing during high-velocity sales events through intelligent automation with real-time demand simulation and inventory management. This system progresses through three iterations:
 
-- **✅ Iteration 1**: Real-Time Pricing Agent with price elasticity modeling & demand simulation
+- **✅ Iteration 1**: Real-Time Pricing Agent with price elasticity-based demand simulation
 - **🔄 Iteration 2**: Semi-autonomous agent with financial simulation & planning capabilities  
 - **⏳ Iteration 3**: Multi-agent system with autonomous monitoring & execution
 
@@ -16,8 +16,8 @@ Transform retail pricing during high-velocity sales events through intelligent a
 
 ### ⚡ **Real-Time Pricing Agent Features**
 
-#### 🧠 **Price Elasticity Modeling**
-- **Demand Simulation**: Calculate projected demand using `% change in demand = price_elasticity × % change in price`
+#### 🧠 **Price Elasticity-Based Demand Simulation**
+- **Demand Forecasting**: Calculate projected demand using `% change in demand = price_elasticity × % change in price`
 - **Scenario Analysis**: Show impact of ±5% and ±10% price changes on demand and revenue
 - **Revenue Optimization**: Maximize revenue while maintaining margin requirements
 - **Inventory Balance**: Prevent stockouts and manage excess inventory
@@ -140,9 +140,10 @@ The Streamlit interface includes built-in example queries:
 
 ## 📊 Real-Time Pricing Logic
 
-### **Price Elasticity Formula**
+### **Price Elasticity-Based Demand Simulation**
 ```
 % change in demand = price_elasticity × % change in price
+new_demand = current_demand × (1 + demand_change_percent)
 ```
 
 ### **Inventory-Based Adjustments**

@@ -20,6 +20,10 @@ from src.models import (
 from src.data_loader import PricingDataLoader
 from src.vector_store import PricingVectorStore
 from src.simple_retriever import SimplePricingRetriever
+from src.prompts import (
+    PRICING_SYSTEM_PROMPT, create_user_prompt, create_full_context,
+    create_fallback_reasoning, FALLBACK_RECOMMENDATIONS
+)
 
 logger = logging.getLogger(__name__)
 
@@ -393,10 +397,10 @@ class EnhancedPricingRAGAgent:
     def _enhance_query(self, query: PricingQuery) -> str:
         """Enhance the query for better retrieval (Query Expansion technique)"""
         # Basic query expansion - add relevant pricing terms
-        pricing_terms = [
-            "price", "pricing", "cost", "margin", "profit", "competitive", 
-            "competitor", "sales", "inventory", "stock", "revenue"
-        ]
+        #pricing_terms = [
+        #    "price", "pricing", "cost", "margin", "profit", "competitive", 
+        #    "competitor", "sales", "inventory", "stock", "revenue"
+        #]
         
         enhanced_query = query.query
         
@@ -451,7 +455,7 @@ class EnhancedPricingRAGAgent:
             return self._generate_fallback_recommendation(query, retrieval_context, validated_products)
         
         # Prepare context for LLM
-        context_text = self._prepare_context_for_llm(retrieval_context, validated_products)
+        context_text = create_full_context(retrieval_context, validated_products)
         
         # Create messages
         system_message = SystemMessage(content=self._create_system_prompt())
@@ -465,132 +469,13 @@ class EnhancedPricingRAGAgent:
 
     def _create_system_prompt(self) -> str:
         """Create system prompt for LLM"""
-        return """You are a Real-Time Pricing Analyst AI designed to support human analysts during high-velocity sales events (such as Black Friday, flash sales, promotional periods, or peak demand periods). Your objective is to dynamically adjust product prices to maximize revenue, hit margin goals, and manage inventory efficiently — using data-driven strategies including price elasticity modeling.
-
-You must consider the following inputs for each item:
-- Competitor Prices: Stay competitive in a fast-moving market.
-- Target Margin: Ensure prices meet or exceed the desired profit margin.
-- Hourly Sales Trend: Use the last 6–12 hours of sales data to detect surges or drops in demand.
-- Stock Levels: Ensure price moves help avoid stockouts or excessive leftover inventory.
-- Price Elasticity: A measure of how demand is expected to change with price. Use this to simulate future demand at new price points.
-
-Additional Instructions:
-1. Estimate Total Sales for the Day: Use current hourly sales and adapt to the sales event profile. For high-velocity events, use patterns like [2, 3, 5, 8, 12, 15, 18, 20, 22, 25, 20, 18, 15, 12, 10, 8, 6, 4, 3, 2, 1, 1, 1, 1] to forecast demand for the full day.
-
-2. Simulate New Demand: Use the price_elasticity value to simulate how total demand would change if price increases or decreases by ±5% or ±10%.
-   Formula: % change in demand = price_elasticity × % change in price
-
-3. Adjust Price Based on Inventory:
-   - If simulated demand exceeds stock → increase the price.
-   - If simulated demand is much lower than stock → reduce the price.
-
-4. Follow Pricing Guardrails:
-   - Never recommend a price below: cost_price × (1 + target_margin_percent / 100)
-   - Never recommend a price more than 10% above the highest competitor price
-
-Summary of Pricing Logic:
-- Simulate demand using price elasticity before recommending price.
-- If stockout risk is detected, raise the price (within guardrails).
-- If excess inventory is projected, lower the price (within constraints).
-- Always justify the recommendation using data and simulation insights.
-
-Remember: Speed and accuracy are critical during high-velocity sales events. Provide clear, actionable recommendations with quantified impact."""
+        return PRICING_SYSTEM_PROMPT
     
     def _create_user_prompt(self, query: PricingQuery, context_text: str) -> str:
         """Create user prompt with context and query"""
-        return f"""
-        PRICING QUERY: {query.query}
-        
-        ADDITIONAL CONTEXT: {query.context or "High-velocity sales event analysis"}
-        
-        PRODUCT DATA AND MARKET ANALYSIS:
-        {context_text}
-        
-        REQUIRED ANALYSIS:
-        1. DEMAND SIMULATION: Calculate projected daily demand using hourly sales trends and price elasticity
-        2. INVENTORY RISK ASSESSMENT: Compare simulated demand vs. current stock levels
-        3. PRICE OPTIMIZATION: Recommend optimal price considering:
-           - Competitor positioning (stay within 10% of highest competitor price)
-           - Margin requirements (maintain minimum: cost × (1 + target_margin%))
-           - Inventory balance (avoid stockouts or excess inventory)
-        4. SCENARIO ANALYSIS: Show impact of ±5% and ±10% price changes on demand and revenue
-        5. ACTIONABLE RECOMMENDATION: Provide specific price with quantified business impact
+        return create_user_prompt(query, context_text)
 
-        FORMAT YOUR RESPONSE WITH:
-        - Recommended Price: $X.XX
-        - Expected Daily Demand: X units
-        - Revenue Impact: $X,XXX
-        - Inventory Status: [Balanced/Stockout Risk/Excess Inventory]
-        - Confidence Level: [High/Medium/Low]
-        - Reasoning: Detailed explanation with calculations
-        """
 
-    def _prepare_context_for_llm(self, retrieval_context, validated_products: list[ProductInfo]) -> str:
-        """Prepare context text for LLM input"""
-        context_parts = []
-        
-        # Add market summary
-        context_parts.append("MARKET SUMMARY:")
-        context_parts.append(retrieval_context.market_summary)
-        context_parts.append("")
-        
-        # Add competitor analysis
-        context_parts.append("COMPETITIVE ANALYSIS:")
-        context_parts.append(retrieval_context.competitor_analysis)
-        context_parts.append("")
-        
-        # Add detailed product information with enhanced analytics
-        context_parts.append("PRODUCT DETAILS:")
-        for product in validated_products[:3]:  # Limit to top 3 for context window
-            # Calculate metrics
-            current_margin = ((product.current_price - product.cost_price) / product.current_price * 100) if product.current_price > 0 else 0
-            recent_sales = sum(product.hourly_sales) if product.hourly_sales else 0
-            avg_competitor_price = sum(product.competitor_prices) / len(product.competitor_prices) if product.competitor_prices else 0
-            max_competitor_price = max(product.competitor_prices) if product.competitor_prices else product.current_price
-            min_margin_price = product.cost_price * (1 + product.target_margin_percent / 100)
-            
-            # Calculate demand simulation scenarios
-            price_scenarios = []
-            for price_change in [-10, -5, 0, 5, 10]:
-                new_price = product.current_price * (1 + price_change / 100)
-                demand_change = product.price_elasticity * price_change
-                new_demand_multiplier = 1 + (demand_change / 100)
-                estimated_daily_demand = recent_sales * 4 * new_demand_multiplier  # 6h to 24h extrapolation
-                revenue_impact = (new_price - product.current_price) * estimated_daily_demand
-                price_scenarios.append(f"{price_change:+d}%: ${new_price:.2f} → {estimated_daily_demand:.0f} units/day → ${revenue_impact:+,.0f} revenue impact")
-            
-            product_text = f"""
-            Product: {product.item_name} (SKU: {product.item_id})
-            
-            CURRENT METRICS:
-            - Current Price: ${product.current_price:.2f}
-            - Cost Price: ${product.cost_price:.2f}
-            - Current Margin: {current_margin:.1f}%
-            - Target Margin: {product.target_margin_percent}%
-            - Stock Level: {product.stock_level} units
-            - Recent Sales (6h): {recent_sales} units
-            - Price Elasticity: {product.price_elasticity}
-            
-            COMPETITIVE LANDSCAPE:
-            - Avg Competitor Price: ${avg_competitor_price:.2f}
-            - Max Competitor Price: ${max_competitor_price:.2f}
-            - Individual Competitor Prices: {', '.join([f'${p:.2f}' for p in product.competitor_prices])}
-            
-            PRICING CONSTRAINTS:
-            - Minimum Price (Margin): ${min_margin_price:.2f}
-            - Maximum Price (Competition): ${max_competitor_price * 1.1:.2f}
-            
-            DEMAND SIMULATION SCENARIOS:
-            {chr(10).join(price_scenarios)}
-            
-            INVENTORY ANALYSIS:
-            - Current Stock: {product.stock_level} units
-            - Estimated Daily Demand (current price): {recent_sales * 4:.0f} units
-            - Days of Inventory: {(product.stock_level / max(recent_sales * 4, 1)):.1f} days
-            """
-            context_parts.append(product_text)
-        
-        return "\n".join(context_parts)
 
     def _parse_llm_response(self, query: PricingQuery, response_text: str, retrieval_context, validated_products: list[ProductInfo]) -> PricingRecommendation:
         """Parse LLM response into structured recommendation"""
@@ -659,13 +544,7 @@ Remember: Speed and accuracy are critical during high-velocity sales events. Pro
                 recommended_price = product.current_price
                 recommendation = "Current pricing appears optimal - monitor competitor changes"
         
-        reasoning = f"""
-        Analysis for {product.item_name}:
-        - Current margin: {current_margin:.1f}% (target: {product.target_margin_percent}%)
-        - Stock level: {product.stock_level} units
-        - Average competitor price: ${avg_competitor_price:.2f}
-        - Current price competitiveness: {'good' if abs(product.current_price - avg_competitor_price) < avg_competitor_price * 0.1 else 'needs adjustment'}
-        """
+        reasoning = create_fallback_reasoning(product, current_margin, avg_competitor_price)
         
         return PricingRecommendation(
             query=query.query,
