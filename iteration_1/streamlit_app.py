@@ -1,8 +1,9 @@
 """
-Enhanced Streamlit UI for Iteration 1: RAG-powered Pricing Agent with Guardrails and Approval Workflow
+Streamlit UI for Iteration 2: Multi-Query AI Pricing Assistant & Recommendation Dashboard
 
-This provides a streamlined web interface for pricing analysts to interact
-with the RAG-powered pricing recommendation system.
+This provides a more advanced, two-part web interface for pricing analysts:
+1.  A query interface for iterative analysis of products.
+2.  A final recommendation dashboard to summarize the session's findings.
 """
 import streamlit as st
 import pandas as pd
@@ -10,479 +11,255 @@ import logging
 import sys
 import os
 from datetime import datetime
-from typing import List, Optional
+from typing import List
 
 # Add the src directory to Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
 from src.models import (
-    PricingQuery, PricingRecommendation, ApprovalRequest, ApprovalStatus, 
-    ApprovalLevel, RiskLevel
+    PricingQuery, PricingRecommendation, ApprovalStatus, ApprovalLevel
 )
 from src.pricing_agent import EnhancedPricingRAGAgent
 
-# Configure logging
+# --- Page Configuration & Logging ---
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Page configuration
 st.set_page_config(
-    page_title="PriceWise AI - Enhanced Pricing Agent",
-    page_icon="💰",
-    layout="wide",
-    initial_sidebar_state="collapsed"
+    page_title="PriceWise AI - Pricing Assistant",
+    page_icon="💡",
+    layout="wide"
 )
 
-# Custom CSS for better styling
-st.markdown("""
-<style>
-    .main-header {
-        background: linear-gradient(90deg, #1e3a8a, #3b82f6);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    .recommendation-box {
-        background: #ecfdf5;
-        border: 1px solid #10b981;
-        border-radius: 8px;
-        padding: 1rem;
-        margin: 1rem 0;
-    }
-    .warning-box {
-        background: #fef3c7;
-        border: 1px solid #f59e0b;
-        border-radius: 8px;
-        padding: 1rem;
-        margin: 1rem 0;
-    }
-    .error-box {
-        background: #fee2e2;
-        border: 1px solid #ef4444;
-        border-radius: 8px;
-        padding: 1rem;
-        margin: 1rem 0;
-    }
-    .critical-box {
-        background: #fef2f2;
-        border: 2px solid #dc2626;
-        border-radius: 8px;
-        padding: 1rem;
-        margin: 1rem 0;
-    }
-    .example-box {
-        background: #f0f9ff;
-        border: 1px solid #0ea5e9;
-        border-radius: 8px;
-        padding: 1rem;
-        margin: 1rem 0;
-    }
-    .approval-box {
-        background: #fefce8;
-        border: 2px solid #eab308;
-        border-radius: 8px;
-        padding: 1rem;
-        margin: 1rem 0;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# Initialize session state
+# --- Session State Initialization ---
 if 'agent' not in st.session_state:
     st.session_state.agent = None
 if 'agent_initialized' not in st.session_state:
     st.session_state.agent_initialized = False
-if 'user_role' not in st.session_state:
-    st.session_state.user_role = "analyst"
+if 'recommendation_history' not in st.session_state:
+    st.session_state.recommendation_history = []
+if 'view' not in st.session_state:
+    st.session_state.view = 'query' # Two views: 'query' and 'dashboard'
 if 'user_id' not in st.session_state:
-    st.session_state.user_id = "user_" + str(hash(datetime.now()))[:8]
-if 'current_recommendation' not in st.session_state:
-    st.session_state.current_recommendation = None
+    st.session_state.user_id = "analyst_" + str(hash(datetime.now()))[1:9]
+if 'last_query' not in st.session_state:
+    st.session_state.last_query = ""
 
+# --- Agent Initialization ---
 def initialize_agent():
-    """Initialize the enhanced pricing agent"""
+    """Initialize the pricing agent and store it in session state."""
     try:
-        with st.spinner("🚀 Initializing Enhanced Pricing Agent..."):
+        with st.spinner("🚀 Initializing PriceWise AI Agent... This may take a moment."):
             agent = EnhancedPricingRAGAgent()
             agent.initialize()
             st.session_state.agent = agent
             st.session_state.agent_initialized = True
-            st.success("✅ Enhanced Pricing Agent initialized successfully!")
-            st.rerun()
-            return True
+        st.success("✅ PriceWise AI Agent is ready!")
+        st.rerun()
     except Exception as e:
-        st.error(f"❌ Failed to initialize agent: {str(e)}")
-        return False
+        st.error(f"❌ Critical Error: Failed to initialize agent. Please check logs. Error: {e}")
 
-def get_approval_authority(role):
-    """Get the maximum price change amount this role can approve"""
-    approval_limits = {
-        "analyst": 50.0,  # Can approve up to $50 change
-        "senior_analyst": 150.0,  # Can approve up to $150 change
-        "manager": 500.0,  # Can approve up to $500 change
-        "director": float('inf')  # Can approve any amount
-    }
-    return approval_limits.get(role, 50.0)
+# --- UI Rendering Functions ---
 
-def can_approve_recommendation(recommendation, user_role):
-    """Check if user can approve this recommendation based on price change amount"""
-    if not recommendation.product_info or not recommendation.recommended_price:
-        return False
-    
-    current_price = recommendation.product_info[0].current_price
-    recommended_price = recommendation.recommended_price
-    price_change = abs(recommended_price - current_price)
-    
-    user_limit = get_approval_authority(user_role)
-    
-    return price_change <= user_limit
+def render_query_interface():
+    """Renders the main interface for users to ask pricing questions."""
+    st.header("Step 1: Analyze Products")
+    st.write("Ask questions about one or more products to generate pricing recommendations. Each successful recommendation will be added to the dashboard.")
 
-def create_user_profile():
-    """Create user profile section"""
-    col1, col2, col3 = st.columns([2, 2, 1])
-    
-    with col1:
-        user_role = st.selectbox(
-            "👤 Your Role",
-            options=["analyst", "senior_analyst", "manager", "director"],
-            index=["analyst", "senior_analyst", "manager", "director"].index(st.session_state.user_role),
-            help="Select your role to determine approval authority"
-        )
-        st.session_state.user_role = user_role
-    
-    with col2:
-        authority_levels = {
-            "analyst": "Up to $50 price changes",
-            "senior_analyst": "Up to $150 price changes",
-            "manager": "Up to $500 price changes", 
-            "director": "Any price changes"
-        }
-        st.info(f"**Approval Authority:** {authority_levels[user_role]}")
-    
-    with col3:
-        st.text(f"**User ID:** {st.session_state.user_id[:8]}")
-
-def create_recommendation_table(recommendations):
-    """Create the required output table format"""
-    if not recommendations:
-        return pd.DataFrame()
-    
-    if not isinstance(recommendations, list):
-        recommendations = [recommendations]
-    
-    table_data = []
-    
-    for rec in recommendations:
-        if rec.product_info and len(rec.product_info) > 0:
-            product = rec.product_info[0]
-            product_name = product.item_name
-            product_id = product.item_id
-        else:
-            product_name = "N/A"
-            product_id = "N/A"
-        
-        approval_threshold = rec.approval_threshold.value.replace('_', ' ').title() if rec.approval_threshold else "Analyst"
-        recommended_price = f"${rec.recommended_price:.2f}" if rec.recommended_price else "See Analysis"
-        short_reasoning = rec.reasoning[:100] + "..." if len(rec.reasoning) > 100 else rec.reasoning
-        
-        table_data.append({
-            "Product": product_name,
-            "Product ID": product_id,
-            "Approval Threshold": approval_threshold,
-            "Recommended Price": recommended_price,
-            "Short Reasoning": short_reasoning
-        })
-    
-    return pd.DataFrame(table_data)
-
-def display_approval_section(recommendation):
-    """Display approval section with role-based approval button"""
-    if recommendation.approval_status != ApprovalStatus.PENDING:
-        return
-    
-    st.markdown('<div class="approval-box">', unsafe_allow_html=True)
-    st.subheader("🔄 Approval Required")
-    
-    user_role = st.session_state.user_role
-    can_approve = can_approve_recommendation(recommendation, user_role)
-    
-    if recommendation.product_info and recommendation.recommended_price:
-        current_price = recommendation.product_info[0].current_price
-        price_change = abs(recommendation.recommended_price - current_price)
-        user_limit = get_approval_authority(user_role)
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.metric("Price Change Amount", f"${price_change:.2f}")
-            st.metric("Your Approval Limit", f"${user_limit:.2f}" if user_limit != float('inf') else "Unlimited")
-        
-        with col2:
-            st.metric("Risk Level", recommendation.risk_level.value.title())
-            if recommendation.financial_impact:
-                revenue_impact = recommendation.financial_impact.get('estimated_monthly_revenue_impact', 0)
-                st.metric("Revenue Impact", f"${revenue_impact:,.0f}/month")
-    
-    if can_approve:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if st.button("✅ Approve Recommendation", type="primary", key=f"approve_{recommendation.recommendation_id}"):
-                approval_request = ApprovalRequest(
-                    recommendation_id=recommendation.recommendation_id,
-                    approver_id=st.session_state.user_id,
-                    approver_role=user_role,
-                    decision=ApprovalStatus.APPROVED,
-                    notes=f"Approved by {user_role} - price change within authority limit"
-                )
-                
-                success = st.session_state.agent.submit_approval_request(approval_request)
-                if success:
-                    st.success("✅ Recommendation approved successfully!")
-                    st.rerun()
-                else:
-                    st.error("❌ Failed to approve recommendation")
-        
-        with col2:
-            if st.button("❌ Reject Recommendation", key=f"reject_{recommendation.recommendation_id}"):
-                approval_request = ApprovalRequest(
-                    recommendation_id=recommendation.recommendation_id,
-                    approver_id=st.session_state.user_id,
-                    approver_role=user_role,
-                    decision=ApprovalStatus.REJECTED,
-                    notes=f"Rejected by {user_role}"
-                )
-                
-                success = st.session_state.agent.submit_approval_request(approval_request)
-                if success:
-                    st.warning("❌ Recommendation rejected")
-                    st.rerun()
-                else:
-                    st.error("❌ Failed to reject recommendation")
-    else:
-        if recommendation.product_info and recommendation.recommended_price:
-            price_change = abs(recommendation.recommended_price - recommendation.product_info[0].current_price)
-            required_role = "director" if price_change > 500 else "manager" if price_change > 150 else "senior_analyst"
-            st.warning(f"⚠️ This price change (${price_change:.2f}) requires {required_role} approval or higher. Your role ({user_role}) has insufficient authority.")
-        else:
-            st.info("⚠️ Cannot determine approval authority - insufficient pricing data.")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
-def display_recommendation_details(recommendation):
-    """Display detailed recommendation information"""
-    risk_styles = {
-        RiskLevel.LOW: "recommendation-box",
-        RiskLevel.MEDIUM: "warning-box", 
-        RiskLevel.HIGH: "error-box",
-        RiskLevel.CRITICAL: "critical-box"
-    }
-    
-    risk_emoji = {"low": "✅", "medium": "⚠️", "high": "🚨", "critical": "🔥"}
-    
-    st.markdown(f'<div class="{risk_styles[recommendation.risk_level]}">', unsafe_allow_html=True)
-    st.subheader(f"{risk_emoji.get(recommendation.risk_level.value, '💡')} Risk Assessment: {recommendation.risk_level.value.upper()}")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        confidence_pct = recommendation.confidence_score * 100
-        st.metric("Confidence", f"{confidence_pct:.0f}%")
-    
-    with col2:
-        st.metric("Risk Level", recommendation.risk_level.value.title())
-    
-    with col3:
-        if recommendation.financial_impact:
-            revenue_impact = recommendation.financial_impact.get('estimated_monthly_revenue_impact', 0)
-            st.metric("Revenue Impact", f"${revenue_impact:,.0f}/month")
-        else:
-            st.metric("Revenue Impact", "N/A")
-    
-    with col4:
-        products_analyzed = len(recommendation.product_info)
-        st.metric("Products Analyzed", products_analyzed)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Guardrail violations if any
-    if recommendation.guardrail_violations:
-        st.subheader("🛡️ Guardrail Adjustments")
-        for violation in recommendation.guardrail_violations:
-            st.warning(f"**{violation.rule_name.replace('_', ' ').title()}**: {violation.explanation}")
-    
-    # Approval section
-    display_approval_section(recommendation)
-    
-    # Full reasoning in expandable section
-    with st.expander("📋 View Full Analysis"):
-        st.subheader("Detailed Reasoning")
-        st.text_area("Analysis", recommendation.reasoning, height=200, disabled=True, key=f"full_reasoning_{recommendation.recommendation_id}")
-        
-        if recommendation.market_context:
-            st.subheader("Market Context")
-            st.text_area("Market Analysis", recommendation.market_context, height=150, disabled=True, key=f"market_context_{recommendation.recommendation_id}")
-
-def create_example_queries():
-    """Create example queries at the top for users to try"""
-    st.markdown('<div class="example-box">', unsafe_allow_html=True)
-    st.subheader("💡 Try These Example Queries")
-    
-    examples = [
-        {
-            "title": "⚡ Flash Sale Optimization",
-            "query": "What should be the optimal price for Nike Air Max sneakers (APP10001) during a 6-hour flash sale event?",
-            "context": "Flash sale event - high demand expected, need to balance inventory and revenue",
-            "product_ids": "APP10001"
-        },
-        {
-            "title": "🛍️ Black Friday Strategy",
-            "query": "Optimize pricing for Adidas T-shirts during Black Friday considering competitor price drops and high inventory levels",
-            "context": "Black Friday event - competitors reduced prices by 15%, high inventory needs clearance",
-            "product_ids": ""
-        },
-        {
-            "title": "🚨 Stockout Prevention",
-            "query": "Product APP10000 is selling 3x faster than expected. Should we increase the price to prevent stockout?",
-            "context": "High-velocity sales event - demand surge detected, limited inventory",
-            "product_ids": "APP10000"
-        },
-        {
-            "title": "📊 Demand Simulation",
-            "query": "Simulate demand scenarios for Under Armour Socks (APP10005) with ±10% price changes during peak sales period",
-            "context": "Peak sales period - need price elasticity analysis and revenue optimization",
-            "product_ids": "APP10005"
-        }
-    ]
-    
-    col1, col2 = st.columns(2)
-    
-    for i, example in enumerate(examples):
-        with col1 if i % 2 == 0 else col2:
-            if st.button(f"{example['title']}", key=f"example_{i}", use_container_width=True):
-                st.session_state.example_query = example['query']
-                st.session_state.example_context = example['context']
-                st.session_state.example_product_ids = example['product_ids']
-                st.rerun()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
-def main():
-    """Main Streamlit application"""
-    
-    # Header
-    st.markdown("""
-    <div class="main-header">
-        <h1>⚡ PriceWise AI - Real-Time Pricing Agent</h1>
-        <p>High-Velocity Sales Event Optimizer with Price Elasticity Modeling & Demand Simulation</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Initialize agent if needed
-    if not st.session_state.agent_initialized:
-        st.info("⚡ Welcome to Real-Time PriceWise AI! Click below to initialize the high-velocity pricing agent.")
-        if st.button("Initialize Real-Time Pricing Agent", type="primary"):
-            initialize_agent()
-        return
-    
-    # User profile
-    create_user_profile()
-    st.markdown("---")
-    
-    # Example queries at the top
-    create_example_queries()
-    st.markdown("---")
-    
-    # Main query interface
-    st.subheader("⚡ Ask the Real-Time Pricing Agent")
-    
-    # Query form
-    with st.form("pricing_query"):
-        # Check for example query in session state
-        default_query = st.session_state.get('example_query', '')
-        default_context = st.session_state.get('example_context', '')
-        default_product_ids = st.session_state.get('example_product_ids', '')
-        
-        # Clear example from session state after using
-        if 'example_query' in st.session_state:
-            del st.session_state.example_query
-            del st.session_state.example_context  
-            del st.session_state.example_product_ids
-        
+    # Query Input Form
+    with st.form("query_form"):
         query = st.text_area(
-            "Your Real-Time Pricing Question",
-            value=default_query,
-            placeholder="e.g., What should be the optimal price for Nike sneakers during a flash sale to maximize revenue while managing inventory?",
+            "Enter your pricing query",
+            value=st.session_state.last_query,
+            placeholder="e.g., 'What is the optimal price for Nike sneakers?' or 'Compare pricing for APP10001 and APP10002'",
             height=100
         )
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            context = st.text_input(
-                "Additional Context (Optional)",
-                value=default_context,
-                placeholder="e.g., Competitor analysis, margin optimization"
-            )
-        
-        with col2:
-            product_ids = st.text_input(
-                "Specific Product IDs (Optional)",
-                value=default_product_ids,
-                placeholder="e.g., APP10000, APP10001"
-            )
-        
-        submitted = st.form_submit_button("🔍 Get Pricing Recommendation", type="primary")
-    
-    if submitted and query.strip():
-        try:
-            # Parse product IDs
-            product_id_list = [pid.strip() for pid in product_ids.split(',') if pid.strip()] if product_ids else None
-            
-            # Create query object
-            pricing_query = PricingQuery(
-                query=query,
-                context=context if context else None,
-                product_ids=product_id_list,
-                requester_id=st.session_state.user_id,
-                requester_role=st.session_state.user_role
-            )
-            
-            # Process query
-            with st.spinner("🤖 Analyzing your pricing question with guardrails..."):
-                recommendation = st.session_state.agent.process_query(pricing_query)
-            
-            # Store current recommendation
-            st.session_state.current_recommendation = recommendation
-            
-            # Display results in required table format
-            st.success("✅ Analysis Complete!")
-            
-            # Create and display the required table
-            st.subheader("📊 Pricing Recommendation Results")
-            recommendation_table = create_recommendation_table([recommendation])
-            
-            if not recommendation_table.empty:
-                st.dataframe(
-                    recommendation_table,
-                    use_container_width=True,
-                    hide_index=True
-                )
-                
-                # Display detailed analysis below the table
-                st.markdown("---")
-                display_recommendation_details(recommendation)
-            else:
-                st.warning("No specific pricing recommendations generated. Please try a more specific query.")
-                st.text_area("Raw Response", recommendation.reasoning, height=200, disabled=True)
-            
-        except Exception as e:
-            st.error(f"❌ Error processing query: {str(e)}")
-            logger.error(f"Query processing error: {str(e)}")
-    
+        submitted = st.form_submit_button("🧠 Get Recommendation")
+
+    # Processing Logic
+    if submitted and query:
+        st.session_state.last_query = query
+        process_query(query)
     elif submitted:
-        st.warning("⚠️ Please enter a pricing question.")
+        st.warning("Please enter a query.")
+
+    st.markdown("---")
+
+    # Display current recommendations and finalize button
+    if st.session_state.recommendation_history:
+        st.subheader("Analyzed Products in this Session")
+        
+        for rec in st.session_state.recommendation_history:
+            if rec.product_info and rec.recommended_price is not None:
+                product = rec.product_info[0]
+                with st.expander(f"**{product.item_name}** | Recommended Price: **${rec.recommended_price:.2f}**"):
+                    
+                    st.subheader("Pricing Recommendation Results")
+                    
+                    price_change_abs = rec.recommended_price - product.current_price
+                    price_change_pct = (price_change_abs / product.current_price * 100) if product.current_price > 0 else 0
+                    
+                    if price_change_abs > 0.01:
+                        action = "Increase"
+                        delta_color = "inverse"
+                    elif price_change_abs < -0.01:
+                        action = "Decrease"
+                        delta_color = "normal"
+                    else:
+                        action = "No Change"
+                        delta_color = "off"
+
+                    col1, col2, col3, col4, col5, col6 = st.columns(6)
+                    col1.metric("Recommended Action", action)
+                    col2.metric("Current Price", f"${product.current_price:,.2f}")
+                    col3.metric("Price Change", f"${price_change_abs:,.2f}", f"{price_change_pct:.1f}%", delta_color=delta_color)
+                    
+                    revenue_impact = 0
+                    if rec.financial_impact:
+                        revenue_impact = rec.financial_impact.get('estimated_monthly_revenue_impact', 0)
+                    col4.metric("Revenue Impact", f"${revenue_impact:,.0f}/mo")
+                    
+                    col5.metric("Confidence Level", f"{rec.confidence_score:.0%}")
+                    col6.metric("Risk Level", rec.risk_level.value.title())
+
+                    # --- Analysis Section ---
+                    st.subheader("Analysis")
+                    st.text_area("Detailed Reasoning", value=rec.reasoning, height=150, disabled=True, key=f"query_reasoning_{product.item_id}")
+                    if rec.market_context:
+                        st.text_area("Market Context", value=rec.market_context, height=150, disabled=True, key=f"query_market_{product.item_id}")
+
+        if st.button("Step 2: Finalize and View Dashboard ➡️", type="primary"):
+            st.session_state.view = 'dashboard'
+            st.rerun()
+
+def process_query(query: str):
+    """Handles the query submission, agent processing, and response display."""
+    with st.spinner("🔍 Analyzing..."):
+        pricing_query = PricingQuery(
+            query=query,
+            requester_id=st.session_state.user_id
+        )
+        recommendation = st.session_state.agent.process_query(pricing_query)
+
+        # Check for guardrail rejection
+        if recommendation.approval_status == ApprovalStatus.REJECTED and recommendation.reasoning:
+            st.error(f"⚠️ **Request Blocked**: {recommendation.reasoning}", icon="🛡️")
+        # Check for other errors
+        elif not recommendation.product_info and not recommendation.recommended_price:
+            st.warning(f"**Could not generate a specific recommendation.**\n\nAgent's analysis: *{recommendation.reasoning}*", icon="🤔")
+        # Handle success
+        else:
+            st.session_state.recommendation_history.append(recommendation)
+            st.success(f"✅ Recommendation for **{recommendation.product_info[0].item_name}** added to the dashboard.", icon="🎉")
+            # Clear query box for next query
+            st.session_state.last_query = ""
+            st.rerun()
+
+def render_dashboard():
+    """Renders the final summary dashboard of all recommendations."""
+    st.header("Step 2: Recommendation Dashboard")
+    st.write("This dashboard summarizes all pricing recommendations from your analysis session.")
+
+    if not st.session_state.recommendation_history:
+        st.warning("No recommendations have been generated yet. Please go back and analyze some products.")
+        if st.button("⬅️ Back to Analysis"):
+            st.session_state.view = 'query'
+            st.rerun()
+        return
+
+    # Prepare data for the summary dataframe
+    dashboard_data = []
+    for rec in st.session_state.recommendation_history:
+        if not rec.product_info: continue
+        
+        product = rec.product_info[0]
+        dashboard_data.append({
+            "Product Name": product.item_name,
+            "Product ID": product.item_id,
+            "Current Price": f"${product.current_price:.2f}",
+            "Recommended Price": f"${rec.recommended_price:.2f}" if rec.recommended_price else "N/A",
+            "Price Change": f"${rec.recommended_price - product.current_price:.2f}" if rec.recommended_price else "N/A",
+            "Risk Level": rec.risk_level.value.title(),
+            "Required Approval": rec.approval_threshold.value.replace('_', ' ').title(),
+            "Analysis": rec.reasoning
+        })
+    
+    # Detailed view for each recommendation
+    st.subheader("Detailed Analysis")
+    for rec in st.session_state.recommendation_history:
+        if not rec.product_info or rec.recommended_price is None: continue
+        
+        product = rec.product_info[0]
+        with st.container(border=True):
+            price_change_abs = rec.recommended_price - product.current_price
+            if price_change_abs > 0.01:
+                action = "Increase"
+            elif price_change_abs < -0.01:
+                action = "Decrease"
+            else:
+                action = "No Change"
+
+            col1, col2, col3, col4, col5, col6 = st.columns(6)
+            col1.text("Product Name"); col1.write(f"**{product.item_name}**")
+            col2.text("Brand"); col2.write(f"**{product.item_name.split()[0]}**")
+            col3.text("Current Price"); col3.write(f"**${product.current_price:.2f}**")
+            col4.text("Recommended Action"); col4.write(f"**{action}**")
+            col5.text("Recommended Price"); col5.write(f"**${rec.recommended_price:.2f}**")
+
+            revenue_impact = 0
+            if rec.financial_impact:
+                revenue_impact = rec.financial_impact.get('estimated_monthly_revenue_impact', 0)
+            col6.text("Revenue Impact"); col6.write(f"**${revenue_impact:,.0f}/mo**")
+
+            # Expander for full details
+            with st.expander("Show Full Reasoning and Analysis"):
+                st.text_area("Reasoning", value=rec.reasoning, height=150, disabled=True, key=f"reasoning_{product.item_id}")
+                st.text_area("Market Context", value=rec.market_context, height=150, disabled=True, key=f"market_{product.item_id}")
+
+                if rec.guardrail_violations:
+                    st.warning("Guardrail Adjustments Applied:", icon="🛡️")
+                    for violation in rec.guardrail_violations:
+                        st.write(f"- **{violation.rule_name.replace('_', ' ').title()}**: {violation.explanation}")
+    
+    st.markdown("---")
+
+    # Summary table and download button at the bottom
+    if dashboard_data:
+        st.subheader("Summary of Recommendations")
+        summary_df = pd.DataFrame(dashboard_data)
+        st.dataframe(summary_df, use_container_width=True, hide_index=True)
+
+        csv = summary_df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Download Summary as CSV",
+            data=csv,
+            file_name='pricing_recommendation_summary.csv',
+            mime='text/csv',
+        )
+
+    st.markdown("---")
+    if st.button("⬅️ Start New Analysis Session"):
+        # Clear history for a new session
+        st.session_state.recommendation_history = []
+        st.session_state.view = 'query'
+        st.rerun()
+
+
+# --- Main Application Logic ---
+def main():
+    """Main function to run the Streamlit app."""
+    st.title("💡 PriceWise AI Assistant")
+
+    if not st.session_state.agent_initialized:
+        st.warning("The AI agent is not yet initialized.")
+        if st.button("Click to Initialize Agent", type="primary"):
+            initialize_agent()
+    else:
+        # User can switch between views
+        if st.session_state.view == 'query':
+            render_query_interface()
+        elif st.session_state.view == 'dashboard':
+            render_dashboard()
 
 if __name__ == "__main__":
-    main() 
+    main()

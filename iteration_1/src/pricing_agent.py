@@ -8,6 +8,7 @@ informed recommendations with comprehensive guardrails and approval workflows.
 import os
 import logging
 import uuid
+import re
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 from langchain_openai import ChatOpenAI
@@ -53,7 +54,12 @@ class EnhancedPricingRAGAgent:
             "high_risk_price_change": 25.0,
             "critical_risk_price_change": 40.0,
             "low_confidence_threshold": 0.6,
-            "medium_confidence_threshold": 0.8
+            "medium_confidence_threshold": 0.8,
+            
+            # New guardrails for fraud and high-value items
+            "min_absolute_price": 0.50,  # Minimum price of $0.50
+            "high_value_item_threshold": 500.0,  # Items over $500 are high-value
+            "max_absolute_price_change": 100.0  # Absolute price changes over $100 are high-risk
         }
         
     def initialize(self) -> None:
@@ -102,12 +108,133 @@ class EnhancedPricingRAGAgent:
             logger.error(f"Failed to initialize pricing agent: {e}")
             raise
     
+    def _validate_pricing_topic(self, query: PricingQuery) -> Optional[str]:
+        """
+        Validate that the query is about pricing and not other topics.
+        Returns None if valid, error message if invalid.
+        """
+        query_text = query.query.lower()
+        
+        # Define pricing-related keywords
+        pricing_keywords = [
+            'price', 'pricing', 'cost', 'margin', 'discount', 'markup', 'revenue',
+            'profit', 'expensive', 'cheap', 'affordable', 'competitive', 'sale',
+            'promotion', 'offer', 'value', 'rate', 'fee', 'charge', 'bill',
+            'quote', 'estimate', 'budget', 'financial', 'money', 'dollar',
+            'cents', 'currency', 'payment', 'recommendation', 'suggest',
+            'optimize', 'adjust', 'increase', 'decrease', 'reduce', 'raise'
+        ]
+        
+        # Define non-pricing topics that should be rejected
+        non_pricing_keywords = [
+            'weather', 'temperature', 'rain', 'snow', 'sunny', 'cloudy',
+            'stock level', 'inventory', 'quantity', 'supply', 'warehouse',
+            'shipping', 'delivery', 'logistics', 'transport', 'location',
+            'store hours', 'contact', 'address', 'phone', 'email',
+            'recipe', 'cooking', 'food', 'restaurant', 'menu',
+            'travel', 'hotel', 'flight', 'vacation', 'tourism',
+            'health', 'medical', 'doctor', 'medicine', 'treatment',
+            'sports', 'game', 'entertainment', 'movie', 'music',
+            'technology', 'software', 'computer', 'programming', 'code'
+        ]
+        
+        # Check for explicit non-pricing topics
+        for keyword in non_pricing_keywords:
+            if keyword in query_text:
+                return f"I apologize, but I can only assist with pricing-related inquiries. Your question appears to be about '{keyword}', which is outside my scope of expertise. Please ask questions related to product pricing, cost analysis, or pricing recommendations."
+        
+        # Check if query contains pricing-related content
+        has_pricing_content = any(keyword in query_text for keyword in pricing_keywords)
+        
+        # Additional check for common pricing patterns
+        pricing_patterns = [
+            r'\$\d+',  # Dollar amounts like $50
+            r'\d+\s*cents?',  # Cent amounts
+            r'\d+\s*%',  # Percentages
+            r'how much',  # Common pricing question
+            r'what.*cost',  # Cost questions
+            r'should.*price',  # Price recommendation questions
+        ]
+        
+        has_pricing_pattern = any(re.search(pattern, query_text) for pattern in pricing_patterns)
+        
+        if not (has_pricing_content or has_pricing_pattern):
+            return "I specialize in pricing analysis and recommendations. Please ask questions related to product pricing, cost optimization, margin analysis, or pricing strategies. For other inquiries, please consult the appropriate specialist."
+        
+        return None  # Valid pricing query
+    
+    def _validate_fraudulent_pricing(self, query: PricingQuery) -> Optional[str]:
+        """
+        Detect potentially fraudulent pricing requests.
+        Returns None if valid, error message if potentially fraudulent.
+        """
+        query_text = query.query.lower()
+        
+        # Extract potential price values from the query
+        price_patterns = [
+            r'\$0\.0[1-9]',  # $0.01 to $0.09
+            r'\$0\.1[0-9]',  # $0.10 to $0.19
+            r'\$0\.[2-4][0-9]',  # $0.20 to $0.49
+            r'0\.0[1-9]\s*dollars?',  # 0.01 to 0.09 dollars
+            r'0\.[1-4][0-9]\s*dollars?',  # 0.10 to 0.49 dollars
+            r'[1-4]?[0-9]\s*cents?',  # 1 to 49 cents
+            r'one\s*cent',  # "one cent"
+            r'penny',  # "penny"
+            r'almost\s*free',  # "almost free"
+            r'nearly\s*zero',  # "nearly zero"
+            r'minimal\s*price',  # "minimal price"
+        ]
+        
+        # Check for suspicious pricing patterns
+        for pattern in price_patterns:
+            if re.search(pattern, query_text):
+                return "I cannot process requests for extremely low pricing (under $0.50) as this may indicate an error or unauthorized activity. Such pricing decisions require special authorization and manual review. Please contact your supervisor or the pricing committee for assistance with exceptional pricing scenarios."
+        
+        # Check for explicit requests to set very low prices
+        suspicious_phrases = [
+            'set price to 1 cent',
+            'make it 1 cent',
+            'price it at 1 cent',
+            'sell for 1 cent',
+            'charge 1 cent',
+            'cost 1 cent',
+            'practically free',
+            'give away',
+            'free of charge'
+        ]
+        
+        for phrase in suspicious_phrases:
+            if phrase in query_text:
+                return "I cannot assist with pricing requests that appear to be non-commercial or potentially unauthorized. Pricing decisions must align with business objectives and regulatory requirements. Please consult with management for guidance on exceptional pricing scenarios."
+        
+        return None  # No fraudulent patterns detected
+
     def process_query(self, query: PricingQuery) -> PricingRecommendation:
         """Process a pricing query using enhanced RAG workflow with guardrails"""
         if not self.initialized:
             raise ValueError("Agent not initialized. Call initialize() first.")
             
         try:
+            # Input Validation Guardrails - Check these FIRST before any processing
+            
+            # Guardrail: Validate topic is pricing-related
+            topic_validation_error = self._validate_pricing_topic(query)
+            if topic_validation_error:
+                return self._create_rejection_recommendation(
+                    query, 
+                    "TOPIC_VALIDATION_FAILED", 
+                    topic_validation_error
+                )
+            
+            # Guardrail: Check for potentially fraudulent pricing requests
+            fraud_validation_error = self._validate_fraudulent_pricing(query)
+            if fraud_validation_error:
+                return self._create_rejection_recommendation(
+                    query, 
+                    "FRAUDULENT_PRICING_DETECTED", 
+                    fraud_validation_error
+                )
+            
             # Generate unique recommendation ID
             recommendation_id = str(uuid.uuid4())
             
@@ -141,6 +268,34 @@ class EnhancedPricingRAGAgent:
             logger.error(f"Failed to process query: {e}")
             raise
     
+    def _create_rejection_recommendation(self, query: PricingQuery, rejection_type: str, message: str) -> PricingRecommendation:
+        """Create a recommendation object for rejected queries"""
+        return PricingRecommendation(
+            query=query.query,
+            recommended_price=None,
+            reasoning=message,
+            confidence_score=0.0,
+            product_info=[],
+            market_context="Request rejected due to policy violation.",
+            recommendation="Request cannot be processed due to policy violation.",
+            guardrail_violations=[
+                GuardrailViolation(
+                    rule_name=rejection_type.lower(),
+                    violation_type="policy_violation",
+                    original_value=None,
+                    adjusted_value=None,
+                    explanation=message,
+                    severity=RiskLevel.CRITICAL
+                )
+            ],
+            approval_status=ApprovalStatus.REJECTED,
+            risk_level=RiskLevel.CRITICAL,
+            approval_threshold=ApprovalLevel.DIRECTOR,
+            financial_impact=None,
+            created_at=datetime.now(),
+            expires_at=datetime.now() + timedelta(minutes=1)  # Expire immediately
+        )
+
     def _assess_risk_and_approval(self, recommendation: PricingRecommendation) -> PricingRecommendation:
         """Assess risk level and determine approval requirements"""
         
@@ -153,8 +308,9 @@ class EnhancedPricingRAGAgent:
         current_price = product.current_price
         recommended_price = recommendation.recommended_price
         
-        # Calculate price change percentage
-        price_change_pct = abs((recommended_price - current_price) / current_price * 100)
+        # Calculate price change percentage and absolute value
+        price_change_pct = abs((recommended_price - current_price) / current_price * 100) if current_price > 0 else float('inf')
+        price_change_abs = abs(recommended_price - current_price)
         
         # Calculate financial impact
         recent_sales = sum(product.hourly_sales) if product.hourly_sales else 0
@@ -172,12 +328,14 @@ class EnhancedPricingRAGAgent:
         if price_change_pct >= self.guardrail_config["critical_risk_price_change"]:
             recommendation.risk_level = RiskLevel.CRITICAL
             recommendation.approval_threshold = ApprovalLevel.DIRECTOR
-        elif price_change_pct >= self.guardrail_config["high_risk_price_change"]:
+        elif (price_change_pct >= self.guardrail_config["high_risk_price_change"] or
+              price_change_abs > self.guardrail_config["max_absolute_price_change"]):
             recommendation.risk_level = RiskLevel.HIGH
             recommendation.approval_threshold = ApprovalLevel.MANAGER
         elif (price_change_pct >= 10.0 or 
               recommendation.confidence_score < self.guardrail_config["medium_confidence_threshold"] or
-              abs(revenue_impact) > 10000):  # $10k monthly impact
+              abs(revenue_impact) > 10000 or
+              product.current_price > self.guardrail_config["high_value_item_threshold"]):  # $10k monthly impact
             recommendation.risk_level = RiskLevel.MEDIUM
             recommendation.approval_threshold = ApprovalLevel.SENIOR_ANALYST
         else:
@@ -200,6 +358,19 @@ class EnhancedPricingRAGAgent:
         product = recommendation.product_info[0]
         original_price = recommendation.recommended_price
         adjusted_price = original_price
+        
+        # Guardrail 0: Prevent extremely low prices (potential fraud/error)
+        min_abs_price = self.guardrail_config["min_absolute_price"]
+        if adjusted_price < min_abs_price:
+            violations.append(GuardrailViolation(
+                rule_name="minimum_absolute_price",
+                violation_type="potential_fraud_or_error",
+                original_value=adjusted_price,
+                adjusted_value=min_abs_price,
+                explanation=f"Price adjusted from ${adjusted_price:.2f} to ${min_abs_price:.2f} to prevent potentially fraudulent or erroneous pricing.",
+                severity=RiskLevel.CRITICAL
+            ))
+            adjusted_price = min_abs_price
         
         # Guardrail 1: Price cannot be below cost + minimum margin
         min_price = product.cost_price * self.guardrail_config["price_below_cost_multiplier"]
@@ -475,15 +646,12 @@ class EnhancedPricingRAGAgent:
         """Create user prompt with context and query"""
         return create_user_prompt(query, context_text)
 
-
-
     def _parse_llm_response(self, query: PricingQuery, response_text: str, retrieval_context, validated_products: list[ProductInfo]) -> PricingRecommendation:
         """Parse LLM response into structured recommendation"""
         
         # Extract recommended price if mentioned
         recommended_price = None
         # Simple regex to find price mentions (could be improved)
-        import re
         price_matches = re.findall(r'\$([0-9]+\.?[0-9]*)', response_text)
         if price_matches:
             try:

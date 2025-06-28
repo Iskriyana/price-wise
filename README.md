@@ -1,8 +1,77 @@
-# ⚡ PriceWise AI: Real-Time Pricing Agent
+# PriceWise AI Assistant
 
-**High-Velocity Sales Event Optimizer with Price Elasticity-Based Demand Simulation**
+PriceWise is an advanced, AI-powered pricing assistant designed for retail environments. It leverages a Retrieval-Augmented Generation (RAG) architecture to provide intelligent pricing recommendations, complete with robust guardrails and a multi-step approval workflow.
 
-Welcome to **PriceWise AI** - an enterprise-grade real-time pricing system designed for high-velocity sales events (Black Friday, flash sales, promotional periods). The system combines Retrieval-Augmented Generation (RAG) with price elasticity-based demand simulation, revenue optimization, and enterprise guardrails.
+This project showcases a sophisticated, workflow-based agent that can analyze product data, assess financial risk, and generate pricing strategies that are both effective and secure.
+
+## Iteration 1: Key Features
+
+The first iteration focuses on building a secure and reliable AI assistant with a strong emphasis on Human-in-the-Loop (HITL) workflows.
+
+- **AI-Powered Recommendations**: Utilizes a Large Language Model (LLM) to analyze product data and generate optimal pricing recommendations with detailed reasoning.
+- **RAG Architecture**: Employs a Retrieval-Augmented Generation (RAG) pipeline to ground the LLM's responses in factual data, retrieving relevant product information from a vector store.
+- **Robust Guardrails**: Features a multi-layered guardrail system:
+  - **Input Guardrails**: Validate user queries to prevent off-topic questions and detect potentially fraudulent pricing requests (e.g., setting a price to $0.01).
+  - **Output Guardrails**: Check the LLM's output against business rules, such as maximum price changes and minimum profit margins, automatically adjusting recommendations to ensure they are safe and logical.
+- **Risk & Approval Workflow**: Automatically assesses the financial risk of each recommendation and determines the required approval level (e.g., Analyst, Manager, Director).
+- **Interactive UI**: A multi-step Streamlit application guides the user through analyzing products and viewing all recommendations on a final, downloadable summary dashboard.
+
+## Architecture
+
+The system is built on a modular RAG pipeline orchestrated by a central agent.
+
+1.  **UI (`streamlit_app.py`)**: The user interacts with the system, submitting pricing queries.
+2.  **Input Guardrails**: The agent first validates the query for topic relevance and potential fraud.
+3.  **RAG Pipeline**:
+    - **Retrieve (`vector_store.py`)**: The agent retrieves the most relevant product information from a ChromaDB vector store. It falls back to a simple keyword search if the vector store is unavailable.
+    - **Augment & Generate (`pricing_agent.py`, `prompts.py`)**: The retrieved context is used to build a detailed prompt, which is then sent to an LLM (e.g., GPT-4o-mini) to generate a recommendation.
+4.  **Output Guardrails & Risk Assessment**: The agent validates the LLM's response against business rules and assesses its financial risk to determine the required approval level.
+5.  **Human-in-the-Loop (HITL)**: The final, validated recommendation is presented to the user for review. The system includes a complete, multi-level approval workflow based on user roles.
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.11
+- An OpenAI API key
+
+### Setup & Installation
+
+1.  **Clone the repository**:
+    ```bash
+    git clone <your-repo-url>
+    cd price-wise
+    ```
+
+2.  **Set up the environment using `uv`**:
+    ```bash
+    uv venv --python 3.11
+    source .venv/bin/activate
+    ```
+
+3.  **Install dependencies**:
+    ```bash
+    uv pip install -r iteration_1/requirements.txt
+    ```
+
+4.  **Set your OpenAI API Key**:
+    ```bash
+    export OPENAI_API_KEY='your-api-key-here'
+    ```
+
+### Running the Application
+
+1.  Navigate to the `iteration_1` directory:
+    ```bash
+    cd iteration_1
+    ```
+
+2.  Launch the Streamlit application:
+    ```bash
+    streamlit run streamlit_app.py
+    ```
+
+The application will open in your web browser. Follow the on-screen instructions to initialize the agent and start analyzing product prices.
 
 ## 🎯 Project Vision
 
