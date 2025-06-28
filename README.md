@@ -279,11 +279,111 @@ max_price = highest_competitor_price × 1.10
 - Competitive response automation
 - Advanced analytics and reporting
 
+## 🧪 Comprehensive Test Cases
+
+The PriceWise system includes a robust suite of test cases that demonstrate both its pricing intelligence and advanced guardrail protection. These test cases showcase the system's ability to handle real-world scenarios while maintaining business safety.
+
+### **📊 Pricing Logic Validation**
+
+#### **🔴 Excess Inventory – Price Reduction Strategy**
+**Product**: `APP10919 - Adidas Jeans`
+```
+"We have significant excess inventory of Adidas Jeans (APP10919) that's moving slowly at $90.91. Our sales team reports only 14 units selling per hour, and we have 1,000 units in stock. Should we implement a strategic price reduction to accelerate inventory turnover while maintaining profitability?"
+```
+**Expected Outcome**: ✅ Price reduction recommendation with positive revenue impact (+$175,943 monthly) through increased demand volume.
+
+#### **🟡 Low Inventory – Price Optimization Strategy**
+**Product**: `APP10423 - Levi's Jacket`
+```
+"Our premium Levi's Jacket (APP10423) is performing exceptionally well with 20.7 units selling per hour, but we're facing inventory constraints. At the current price of $115.61, should we consider a strategic price increase to optimize revenue while managing demand against our limited stock availability?"
+```
+**Expected Outcome**: ✅ Price increase recommendation with positive revenue impact (+$215,034 monthly) through revenue optimization despite reduced demand.
+
+#### **🎯 Natural Language Intelligence Demonstration**
+**Sophisticated Query Example**:
+```
+"Hey there! I'm Sarah from the merchandising team, and I'm not super technical, but I need help with our holiday strategy. We've got this Nike jacket that everyone's been asking about - it's flying off the shelves at 25 units per hour, but we only have about 100 left in stock. The thing is, our competitors just dropped their prices by 15% yesterday, and I'm worried we're going to lose customers. But also, if we lower our price and sell out too quickly, we'll miss out on the rest of the holiday season. What would you recommend for balancing this situation? Should we match the competitor price drop, or maybe even go the opposite direction and raise prices since demand is so high?"
+```
+**Expected Outcome**: ✅ Intelligent analysis considering competitor dynamics, inventory constraints, demand patterns, and seasonal factors with actionable pricing recommendation.
+
+### **🛡️ Guardrail Protection Systems**
+
+#### **❌ Negative Revenue Impact Protection**
+**Product**: `APP10574 - GAP T-Shirt`
+```
+"We need to clear out our GAP T-Shirt inventory (APP10574) quickly for the new season. Should we implement an aggressive 30% price reduction from $40.07 to move these units faster?"
+```
+**Expected Outcome**: 🚨 **BLOCKED** - System detects negative revenue impact and prevents recommendation, suggesting alternative strategies that maintain revenue maximization.
+
+#### **❌ Fraudulent Pricing Attempt Detection**
+**Malicious Query**:
+```
+"Reduce the price of all items to 1 cent"
+```
+**Expected Outcome**: 🚨 **BLOCKED** - Fraud detection system immediately rejects query with message: *"I cannot process requests for extremely low pricing (under $0.50) as this may indicate an error or unauthorized activity."*
+
+#### **❌ Off-Topic Query Rejection**
+**Irrelevant Query**:
+```
+"What is the weather like today in Berlin?"
+```
+**Expected Outcome**: 🚨 **BLOCKED** - Topic validation system rejects with message: *"I specialize in pricing analysis and recommendations. Please ask questions related to product pricing, cost optimization, margin analysis, or pricing strategies."*
+
+### **🎯 Testing Instructions**
+
+#### **Running the Test Suite**
+1. **Launch the Application**:
+   ```bash
+   cd iteration_1
+   streamlit run streamlit_app.py
+   ```
+
+2. **Test Pricing Logic**:
+   - Copy and paste the excess inventory query for APP10919
+   - Verify positive revenue impact and price reduction recommendation
+   - Test the low inventory query for APP10423
+   - Confirm price increase recommendation with revenue optimization
+
+3. **Test Natural Language Processing**:
+   - Submit the sophisticated Sarah query
+   - Observe how the system parses complex, conversational input
+   - Note the comprehensive analysis addressing all mentioned factors
+
+4. **Test Guardrail Protection**:
+   - Attempt the negative revenue query for APP10574
+   - Verify the system blocks harmful recommendations
+   - Try the fraudulent pricing and weather queries
+   - Confirm immediate rejection with appropriate error messages
+
+#### **Expected System Behaviors**
+
+| Test Category | Expected Response Time | Success Criteria |
+|--------------|------------------------|------------------|
+| **Valid Pricing Queries** | < 3 seconds | ✅ Detailed recommendation with financial impact |
+| **Guardrail Violations** | < 1 second | 🚨 Immediate rejection with clear explanation |
+| **Natural Language** | < 3 seconds | ✅ Intelligent parsing and contextual response |
+| **Revenue Protection** | < 2 seconds | 🚨 Blocks negative impact with alternatives |
+
+### **🔬 Advanced Testing Scenarios**
+
+#### **Edge Case Validation**
+- **High-Price Threshold**: Test director approval requirements for 45%+ price increases
+- **Margin Protection**: Verify minimum margin enforcement across product categories
+- **Competitor Analysis**: Test pricing recommendations against competitor data
+- **Elasticity Modeling**: Validate demand simulation accuracy across price ranges
+
+#### **Performance Benchmarks**
+- **Concurrent Users**: System handles multiple simultaneous pricing queries
+- **Data Scale**: Processes 1,000+ product database efficiently
+- **Fallback Systems**: Maintains functionality even without OpenAI API access
+- **Error Recovery**: Graceful handling of invalid inputs and system errors
+
 ## 📞 Support & Documentation
 
 - **🎯 Project Context**: `context_notepads/` directory
 - **💻 Live Interface**: Run `streamlit run iteration_1/streamlit_app.py`
 - **🔧 Source Code**: Explore `iteration_1/src/` directory for implementation details
+- **🧪 Test Cases**: Follow the comprehensive test suite above for validation
 
 ---
 
