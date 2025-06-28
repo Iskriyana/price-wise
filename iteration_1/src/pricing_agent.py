@@ -126,16 +126,16 @@ class EnhancedPricingRAGAgent:
         ]
         
         # Define non-pricing topics that should be rejected
+        # NOTE: Be very careful here - only reject topics that are clearly NOT about pricing
         non_pricing_keywords = [
-            'weather', 'temperature', 'rain', 'snow', 'sunny', 'cloudy',
-            'stock level', 'inventory', 'quantity', 'supply', 'warehouse',
-            'shipping', 'delivery', 'logistics', 'transport', 'location',
-            'store hours', 'contact', 'address', 'phone', 'email',
-            'recipe', 'cooking', 'food', 'restaurant', 'menu',
-            'travel', 'hotel', 'flight', 'vacation', 'tourism',
-            'health', 'medical', 'doctor', 'medicine', 'treatment',
-            'sports', 'game', 'entertainment', 'movie', 'music',
-            'technology', 'software', 'computer', 'programming', 'code'
+            'weather forecast', 'temperature today', 'will it rain', 'snow tomorrow', 
+            'sunny weather', 'cloudy skies',  # More specific weather terms
+            'store hours', 'contact information', 'phone number', 'email address',
+            'recipe for', 'cooking instructions', 'restaurant menu',
+            'flight booking', 'hotel reservation', 'vacation planning',
+            'medical advice', 'health symptoms', 'doctor appointment',
+            'movie times', 'concert tickets', 'entertainment schedule',
+            'programming tutorial', 'software installation', 'computer repair'
         ]
         
         # Check for explicit non-pricing topics
@@ -172,6 +172,18 @@ class EnhancedPricingRAGAgent:
         
         # Extract potential price values from the query
         price_patterns = [
+            # Zero pricing patterns (CRITICAL)
+            r'price.*to.*0\b',  # "price to 0", "set price to 0"
+            r'price.*at.*0\b',  # "price at 0", "price it at 0"
+            r'reduce.*price.*to.*0\b',  # "reduce price to 0"
+            r'make.*price.*0\b',  # "make price 0"
+            r'set.*price.*0\b',  # "set price 0"
+            r'\$0\b',  # "$0" (standalone)
+            r'\bzero\s*dollars?\b',  # "zero dollars"
+            r'price.*zero\b',  # "price zero", "price to zero"
+            r'cost.*zero\b',  # "cost zero"
+            
+            # Very low pricing patterns
             r'\$0\.0[1-9]',  # $0.01 to $0.09
             r'\$0\.1[0-9]',  # $0.10 to $0.19
             r'\$0\.[2-4][0-9]',  # $0.20 to $0.49
@@ -192,6 +204,21 @@ class EnhancedPricingRAGAgent:
         
         # Check for explicit requests to set very low prices
         suspicious_phrases = [
+            # Zero price phrases (CRITICAL)
+            'price to 0',
+            'price at 0', 
+            'price to zero',
+            'price at zero',
+            'reduce price to 0',
+            'reduce price to zero',
+            'set price to 0',
+            'set price to zero',
+            'make price 0',
+            'make price zero',
+            'price all items to 0',
+            'price everything to 0',
+            
+            # Very low price phrases
             'set price to 1 cent',
             'make it 1 cent',
             'price it at 1 cent',
@@ -261,8 +288,8 @@ class EnhancedPricingRAGAgent:
             "projected_daily_revenue": projected_daily_revenue
         }
         
-        # Check if revenue impact is negative
-        if monthly_revenue_impact < 0:
+        # Check if revenue impact is negative (allow zero impact for maintaining current price)
+        if monthly_revenue_impact < -100:  # Allow small negative impacts due to rounding, but block significant losses
             return f"This recommendation would result in a negative monthly revenue impact of ${monthly_revenue_impact:,.2f}. Revenue maximization requires all price changes to generate positive revenue. Please consider alternative pricing strategies that account for demand elasticity (current elasticity: {product.price_elasticity})."
         
         # Update the recommendation's reasoning to include correct financial calculations
@@ -438,14 +465,54 @@ FINANCIAL IMPACT ANALYSIS (Elasticity-Based):
         
         violations = []
         
-        if not recommendation.recommended_price or not recommendation.product_info:
+        # Critical check: Ensure we have valid inputs
+        if not recommendation.product_info:
             return recommendation
             
         product = recommendation.product_info[0]
         original_price = recommendation.recommended_price
+        
+        # CRITICAL GUARDRAIL 0: Prevent zero, negative, or None prices (DANGEROUS!)
+        if original_price is None or original_price <= 0:
+            # This is extremely dangerous - use emergency fallback price
+            emergency_price = max(
+                product.current_price,  # Keep current price as safe fallback
+                product.cost_price * 1.20,  # Or 20% markup on cost
+                self.guardrail_config["min_absolute_price"]  # Or absolute minimum
+            )
+            violations.append(GuardrailViolation(
+                rule_name="critical_price_protection",
+                violation_type="dangerous_pricing_error",
+                original_value=original_price,
+                adjusted_value=emergency_price,
+                explanation=f"CRITICAL: Price of ${original_price} is dangerous and has been set to emergency fallback price of ${emergency_price:.2f} to prevent business damage.",
+                severity=RiskLevel.CRITICAL
+            ))
+            original_price = emergency_price
+            
         adjusted_price = original_price
         
-        # Guardrail 0: Prevent extremely low prices (potential fraud/error)
+        # GUARDRAIL 1: Semantic price validation - detect unrealistic recommendations
+        price_change_pct = abs((adjusted_price - product.current_price) / product.current_price * 100) if product.current_price > 0 else 0
+        
+        # If price change is extreme (>90% reduction), it's likely an error
+        if adjusted_price < product.current_price * 0.1:  # More than 90% reduction
+            safe_price = max(
+                product.current_price * 0.5,  # Maximum 50% reduction
+                product.cost_price * self.guardrail_config["price_below_cost_multiplier"],
+                self.guardrail_config["min_absolute_price"]
+            )
+            violations.append(GuardrailViolation(
+                rule_name="extreme_price_reduction_protection",
+                violation_type="unrealistic_pricing",
+                original_value=adjusted_price,
+                adjusted_value=safe_price,
+                explanation=f"Extreme price reduction detected (>{price_change_pct:.0f}% drop). Adjusted from ${adjusted_price:.2f} to ${safe_price:.2f} for safety.",
+                severity=RiskLevel.CRITICAL
+            ))
+            adjusted_price = safe_price
+        
+        # GUARDRAIL 2: Prevent extremely low prices (potential fraud/error)
         min_abs_price = self.guardrail_config["min_absolute_price"]
         if adjusted_price < min_abs_price:
             violations.append(GuardrailViolation(
@@ -458,7 +525,7 @@ FINANCIAL IMPACT ANALYSIS (Elasticity-Based):
             ))
             adjusted_price = min_abs_price
         
-        # Guardrail 1: Price cannot be below cost + minimum margin
+        # GUARDRAIL 3: Price cannot be below cost + minimum margin
         min_price = product.cost_price * self.guardrail_config["price_below_cost_multiplier"]
         if adjusted_price < min_price:
             violations.append(GuardrailViolation(
@@ -471,7 +538,7 @@ FINANCIAL IMPACT ANALYSIS (Elasticity-Based):
             ))
             adjusted_price = min_price
         
-        # Guardrail 2: Maximum price change limit
+        # GUARDRAIL 4: Maximum price change limit
         max_change = product.current_price * (self.guardrail_config["max_price_change_percent"] / 100)
         if abs(adjusted_price - product.current_price) > max_change:
             if adjusted_price > product.current_price:
@@ -489,7 +556,7 @@ FINANCIAL IMPACT ANALYSIS (Elasticity-Based):
             ))
             adjusted_price = new_price
         
-        # Guardrail 3: Margin validation
+        # GUARDRAIL 5: Margin validation
         new_margin = ((adjusted_price - product.cost_price) / adjusted_price * 100) if adjusted_price > 0 else 0
         
         if new_margin < self.guardrail_config["min_margin_percent"]:
@@ -516,7 +583,7 @@ FINANCIAL IMPACT ANALYSIS (Elasticity-Based):
             ))
             adjusted_price = max_margin_price
         
-        # Guardrail 4: Confidence-based adjustments
+        # GUARDRAIL 6: Confidence-based adjustments
         if recommendation.confidence_score < self.guardrail_config["low_confidence_threshold"]:
             violations.append(GuardrailViolation(
                 rule_name="low_confidence",
@@ -742,6 +809,22 @@ FINANCIAL IMPACT ANALYSIS (Elasticity-Based):
         if price_matches:
             try:
                 recommended_price = float(price_matches[-1])  # Take the last mentioned price
+                
+                # CRITICAL EARLY VALIDATION: Catch dangerous prices immediately
+                if recommended_price <= 0:
+                    logger.error(f"LLM returned dangerous price: ${recommended_price}. Using emergency fallback.")
+                    # Use emergency fallback price
+                    if validated_products:
+                        product = validated_products[0]
+                        recommended_price = max(
+                            product.current_price,  # Keep current price as safe fallback
+                            product.cost_price * 1.20,  # Or 20% markup on cost
+                            0.50  # Or absolute minimum
+                        )
+                        response_text += f"\n\n[SYSTEM CORRECTION: Original price recommendation was invalid and has been corrected to ${recommended_price:.2f} for safety.]"
+                    else:
+                        recommended_price = None
+                        
             except:
                 pass
         
