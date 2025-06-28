@@ -12,6 +12,7 @@ import sys
 import os
 from datetime import datetime
 from typing import List
+import re
 
 # Add the src directory to Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
@@ -44,6 +45,8 @@ if 'user_id' not in st.session_state:
     st.session_state.user_id = "analyst_" + str(hash(datetime.now()))[1:9]
 if 'last_query' not in st.session_state:
     st.session_state.last_query = ""
+if 'dashboard_approved' not in st.session_state:
+    st.session_state.dashboard_approved = False
 
 # --- Agent Initialization ---
 def initialize_agent():
@@ -97,7 +100,13 @@ def render_query_interface():
                     st.subheader("Pricing Recommendation Results")
                     
                     price_change_abs = rec.recommended_price - product.current_price
-                    price_change_pct = (price_change_abs / product.current_price * 100) if product.current_price > 0 else 0
+                    
+                    # Use the calculated percentage from financial_impact for consistency
+                    if rec.financial_impact and 'price_change_percent' in rec.financial_impact:
+                        price_change_pct = rec.financial_impact['price_change_percent']
+                    else:
+                        # Fallback calculation
+                        price_change_pct = (price_change_abs / product.current_price * 100) if product.current_price > 0 else 0
                     
                     if price_change_abs > 0.01:
                         action = "Increase"
@@ -117,20 +126,29 @@ def render_query_interface():
                     revenue_impact = 0
                     if rec.financial_impact:
                         revenue_impact = rec.financial_impact.get('estimated_monthly_revenue_impact', 0)
-                    col4.metric("Revenue Impact", f"${revenue_impact:,.0f}/mo")
+                    col4.metric("Revenue Impact (p.m.)", f"${revenue_impact:,.0f}")
                     
                     col5.metric("Confidence Level", f"{rec.confidence_score:.0%}")
                     col6.metric("Risk Level", rec.risk_level.value.title())
 
                     # --- Analysis Section ---
                     st.subheader("Analysis")
-                    st.text_area("Detailed Reasoning", value=rec.reasoning, height=150, disabled=True, key=f"query_reasoning_{product.item_id}")
+                    st.text_area(f"Detailed Reasoning ({product.item_id})", value=rec.reasoning, height=150, disabled=True, key=f"query_reasoning_{product.item_id}")
                     if rec.market_context:
-                        st.text_area("Market Context", value=rec.market_context, height=150, disabled=True, key=f"query_market_{product.item_id}")
+                        st.text_area(f"Market Context ({product.item_id})", value=rec.market_context, height=150, disabled=True, key=f"query_market_{product.item_id}")
 
         if st.button("Step 2: Finalize and View Dashboard ➡️", type="primary"):
             st.session_state.view = 'dashboard'
             st.rerun()
+
+def _get_processed_product_ids() -> List[str]:
+    """Returns a list of all product IDs in the current recommendation history."""
+    processed_ids = []
+    for rec in st.session_state.recommendation_history:
+        if rec.product_info:
+            for product in rec.product_info:
+                processed_ids.append(product.item_id)
+    return processed_ids
 
 def process_query(query: str):
     """Handles the query submission, agent processing, and response display."""
@@ -140,6 +158,15 @@ def process_query(query: str):
             requester_id=st.session_state.user_id
         )
         recommendation = st.session_state.agent.process_query(pricing_query)
+
+        # Post-processing duplicate check
+        if recommendation.product_info:
+            product_id = recommendation.product_info[0].item_id
+            product_name = recommendation.product_info[0].item_name
+            processed_ids = _get_processed_product_ids()
+            if product_id in processed_ids:
+                st.warning(f"Item **{product_name} ({product_id})** has already been analyzed in this session. The result was not added again.", icon="⚠️")
+                return # Stop processing to prevent duplicates
 
         # Check for guardrail rejection
         if recommendation.approval_status == ApprovalStatus.REJECTED and recommendation.reasoning:
@@ -184,8 +211,6 @@ def render_dashboard():
             "Analysis": rec.reasoning
         })
     
-    # Detailed view for each recommendation
-    st.subheader("Detailed Analysis")
     for rec in st.session_state.recommendation_history:
         if not rec.product_info or rec.recommended_price is None: continue
         
@@ -209,12 +234,12 @@ def render_dashboard():
             revenue_impact = 0
             if rec.financial_impact:
                 revenue_impact = rec.financial_impact.get('estimated_monthly_revenue_impact', 0)
-            col6.text("Revenue Impact"); col6.write(f"**${revenue_impact:,.0f}/mo**")
+            col6.text("Revenue Impact (p.m.)"); col6.write(f"**${revenue_impact:,.0f}**")
 
             # Expander for full details
             with st.expander("Show Full Reasoning and Analysis"):
-                st.text_area("Reasoning", value=rec.reasoning, height=150, disabled=True, key=f"reasoning_{product.item_id}")
-                st.text_area("Market Context", value=rec.market_context, height=150, disabled=True, key=f"market_{product.item_id}")
+                st.text_area(f"Reasoning ({product.item_id})", value=rec.reasoning, height=150, disabled=True, key=f"reasoning_{product.item_id}")
+                st.text_area(f"Market Context ({product.item_id})", value=rec.market_context, height=150, disabled=True, key=f"market_{product.item_id}")
 
                 if rec.guardrail_violations:
                     st.warning("Guardrail Adjustments Applied:", icon="🛡️")
@@ -223,8 +248,22 @@ def render_dashboard():
     
     st.markdown("---")
 
-    # Summary table and download button at the bottom
-    if dashboard_data:
+    # --- Final Approval Step ---
+    if not st.session_state.dashboard_approved:
+        st.subheader("Step 3: Final Approval")
+        st.info("Please review the detailed analysis above before finalizing the summary.", icon="ℹ️")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("✅ Approve & Finalize Summary", type="primary"):
+                st.session_state.dashboard_approved = True
+                st.rerun()
+        with col2:
+            if st.button("❌ Reject All"):
+                st.error("No approval provided. The summary will not be generated. You can start a new session or go back to the analysis step.", icon="🚫")
+
+    # --- Summary and Download (only shows after approval) ---
+    if st.session_state.dashboard_approved:
         st.subheader("Summary of Recommendations")
         summary_df = pd.DataFrame(dashboard_data)
         st.dataframe(summary_df, use_container_width=True, hide_index=True)
@@ -241,6 +280,7 @@ def render_dashboard():
     if st.button("⬅️ Start New Analysis Session"):
         # Clear history for a new session
         st.session_state.recommendation_history = []
+        st.session_state.dashboard_approved = False
         st.session_state.view = 'query'
         st.rerun()
 

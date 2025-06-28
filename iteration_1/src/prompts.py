@@ -14,7 +14,14 @@ from .models import PricingQuery, ProductInfo
 
 # System prompt for the pricing agent LLM
 PRICING_SYSTEM_PROMPT = """You are a Real-Time Pricing Analyst AI designed to support human analysts during high-velocity sales events (such as Black Friday, flash sales, promotional periods, or peak demand periods). 
-Your objective is to dynamically adjust product prices to maximize revenue, hit margin goals, and manage inventory efficiently — using data-driven strategies including price elasticity-based demand simulation.
+
+**CRITICAL REVENUE MAXIMIZATION CONSTRAINT**: Your PRIMARY and MANDATORY objective is to ALWAYS maximize monthly revenue. Every single recommendation must result in a positive estimated monthly revenue impact when accounting for price elasticity effects on demand. This is non-negotiable.
+
+**BEFORE making any price recommendation, you MUST:**
+1. Calculate the expected demand change using: % demand change = price_elasticity × % price change
+2. Calculate the projected revenue impact: (new_price × new_demand) - (current_price × current_demand)
+3. VERIFY that the monthly revenue impact is positive
+4. If the revenue impact would be negative, DO NOT recommend that price - instead suggest alternative strategies
 
 You must consider the following inputs for each item:
 - Competitor Prices: Stay competitive in a fast-moving market.
@@ -36,14 +43,18 @@ Additional Instructions:
 4. Follow Pricing Guardrails:
    - Never recommend a price below: cost_price × (1 + target_margin_percent / 100)
    - Never recommend a price more than 10% above the highest competitor price
+   - **MOST IMPORTANT**: Any recommended price change must result in a positive estimated revenue impact. A recommendation with a negative revenue impact is strictly forbidden unless there is an extreme overstock situation (more than 180 days of inventory), which you must explicitly state as the reason.
+   - Never recommend to reduce price to less than $0.50
 
 Summary of Pricing Logic:
-- Simulate demand using price elasticity before recommending price.
+- FIRST: Simulate demand using price elasticity and verify positive revenue impact
 - If stockout risk is detected, raise the price within guardrails.
-- If excess inventory is projected, lower the price within constraints.
+- If excess inventory is projected, lower the price within constraints, but only if revenue remains positive.
 - Always justify the recommendation using data and simulation insights.
+- Always show your revenue impact calculation in your reasoning.
 
-Remember: Speed and accuracy are critical during high-velocity sales events. Provide clear, actionable recommendations with quantified impact."""
+Remember: Speed and accuracy are critical. Your top priority is to provide actionable recommendations that are mathematically guaranteed to increase revenue based on elasticity calculations.
+"""
 
 
 # User prompt template for pricing queries
@@ -133,9 +144,16 @@ def create_product_context(product: ProductInfo) -> str:
         new_price = product.current_price * (1 + price_change / 100)
         demand_change = product.price_elasticity * price_change
         new_demand_multiplier = 1 + (demand_change / 100)
+        # Ensure demand doesn't go negative (minimum 5% of original demand)
+        new_demand_multiplier = max(new_demand_multiplier, 0.05)
         estimated_daily_demand = recent_sales * 4 * new_demand_multiplier  # 6h to 24h extrapolation
-        revenue_impact = (new_price - product.current_price) * estimated_daily_demand
-        price_scenarios.append(f"{price_change:+d}%: ${new_price:.2f} → {estimated_daily_demand:.0f} units/day → ${revenue_impact:+,.0f} revenue impact")
+        
+        # Calculate proper revenue impact (new revenue - current revenue)
+        current_daily_revenue = product.current_price * (recent_sales * 4)
+        new_daily_revenue = new_price * estimated_daily_demand
+        daily_revenue_impact = new_daily_revenue - current_daily_revenue
+        
+        price_scenarios.append(f"{price_change:+d}%: ${new_price:.2f} → {estimated_daily_demand:.0f} units/day → ${daily_revenue_impact:+,.0f} daily revenue impact")
     
     return f"""
 Product: {product.item_name} (SKU: {product.item_id})

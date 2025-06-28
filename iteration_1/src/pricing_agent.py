@@ -209,6 +209,78 @@ class EnhancedPricingRAGAgent:
         
         return None  # No fraudulent patterns detected
 
+    def _validate_revenue_maximization(self, query: PricingQuery, recommendation: PricingRecommendation) -> Optional[str]:
+        """
+        Validate that the recommendation will result in positive revenue impact.
+        Uses price elasticity to calculate realistic demand changes.
+        Returns None if valid, error message if revenue impact is negative.
+        """
+        if not recommendation.product_info or not recommendation.recommended_price:
+            return None  # Cannot validate without product info
+        
+        product = recommendation.product_info[0]
+        current_price = product.current_price
+        recommended_price = recommendation.recommended_price
+        
+        if current_price <= 0:
+            return None  # Cannot calculate with invalid current price
+        
+        # Calculate price change percentage
+        price_change_pct = ((recommended_price - current_price) / current_price) * 100
+        
+        # Calculate demand change using price elasticity
+        # Formula: % change in demand = price_elasticity × % change in price
+        demand_change_pct = product.price_elasticity * price_change_pct
+        
+        # Calculate new demand multiplier
+        new_demand_multiplier = 1 + (demand_change_pct / 100)
+        
+        # Ensure demand doesn't go negative (minimum 5% of original demand)
+        new_demand_multiplier = max(new_demand_multiplier, 0.05)
+        
+        # Calculate current and projected revenue
+        recent_sales = sum(product.hourly_sales) if product.hourly_sales else 0
+        daily_sales_estimate = recent_sales * 4  # Extrapolate 6h to 24h
+        
+        current_daily_revenue = current_price * daily_sales_estimate
+        projected_daily_sales = daily_sales_estimate * new_demand_multiplier
+        projected_daily_revenue = recommended_price * projected_daily_sales
+        
+        # Calculate monthly revenue impact
+        daily_revenue_impact = projected_daily_revenue - current_daily_revenue
+        monthly_revenue_impact = daily_revenue_impact * 30
+        
+        # Update the recommendation's financial impact with correct calculation
+        recommendation.financial_impact = {
+            "price_change_percent": price_change_pct,  # Keep signed value
+            "price_change_amount": recommended_price - current_price,
+            "estimated_monthly_revenue_impact": monthly_revenue_impact,
+            "estimated_daily_sales": projected_daily_sales,
+            "demand_change_percent": demand_change_pct,
+            "current_daily_revenue": current_daily_revenue,
+            "projected_daily_revenue": projected_daily_revenue
+        }
+        
+        # Check if revenue impact is negative
+        if monthly_revenue_impact < 0:
+            return f"This recommendation would result in a negative monthly revenue impact of ${monthly_revenue_impact:,.2f}. Revenue maximization requires all price changes to generate positive revenue. Please consider alternative pricing strategies that account for demand elasticity (current elasticity: {product.price_elasticity})."
+        
+        # Update the recommendation's reasoning to include correct financial calculations
+        financial_summary = f"""
+
+FINANCIAL IMPACT ANALYSIS (Elasticity-Based):
+• Price Change: ${current_price:.2f} → ${recommended_price:.2f} ({price_change_pct:+.1f}%)
+• Demand Change: {demand_change_pct:+.1f}% (elasticity: {product.price_elasticity})
+• Current Daily Sales: {daily_sales_estimate:.0f} units
+• Projected Daily Sales: {projected_daily_sales:.0f} units
+• Current Daily Revenue: ${current_daily_revenue:,.2f}
+• Projected Daily Revenue: ${projected_daily_revenue:,.2f}
+• Monthly Revenue Impact: ${monthly_revenue_impact:+,.2f}"""
+        
+        recommendation.reasoning += financial_summary
+        
+        return None  # Valid recommendation
+
     def process_query(self, query: PricingQuery) -> PricingRecommendation:
         """Process a pricing query using enhanced RAG workflow with guardrails"""
         if not self.initialized:
@@ -246,6 +318,15 @@ class EnhancedPricingRAGAgent:
             
             # Step 3: Generate recommendation using LLM
             recommendation = self._generate_recommendation(query, retrieval_context, validated_products)
+            
+            # Step 3.5: Validate revenue maximization constraint
+            revenue_validation_error = self._validate_revenue_maximization(query, recommendation)
+            if revenue_validation_error:
+                return self._create_rejection_recommendation(
+                    query, 
+                    "NEGATIVE_REVENUE_IMPACT", 
+                    revenue_validation_error
+                )
             
             # Step 4: Apply comprehensive guardrails and validation
             final_recommendation = self._apply_enhanced_guardrails(recommendation)
@@ -308,22 +389,27 @@ class EnhancedPricingRAGAgent:
         current_price = product.current_price
         recommended_price = recommendation.recommended_price
         
-        # Calculate price change percentage and absolute value
-        price_change_pct = abs((recommended_price - current_price) / current_price * 100) if current_price > 0 else float('inf')
-        price_change_abs = abs(recommended_price - current_price)
-        
-        # Calculate financial impact
-        recent_sales = sum(product.hourly_sales) if product.hourly_sales else 0
-        daily_sales_estimate = recent_sales * 4  # Extrapolate 6h to 24h
-        revenue_impact = (recommended_price - current_price) * daily_sales_estimate * 30  # Monthly estimate
-        
-        recommendation.financial_impact = {
-            "price_change_percent": price_change_pct,
-            "price_change_amount": recommended_price - current_price,
-            "estimated_monthly_revenue_impact": revenue_impact,
-            "estimated_daily_sales": daily_sales_estimate
-        }
-        
+        # Use the financial impact that was already calculated in revenue validation
+        # If not available, fall back to simple calculation (shouldn't happen in normal flow)
+        if recommendation.financial_impact:
+            revenue_impact = recommendation.financial_impact.get('estimated_monthly_revenue_impact', 0)
+            price_change_pct = abs(recommendation.financial_impact.get('price_change_percent', 0))  # Use abs for risk assessment
+            price_change_abs = abs(recommendation.financial_impact.get('price_change_amount', 0))
+        else:
+            # Fallback calculation (simple, without elasticity)
+            recent_sales = sum(product.hourly_sales) if product.hourly_sales else 0
+            daily_sales_estimate = recent_sales * 4
+            revenue_impact = (recommended_price - current_price) * daily_sales_estimate * 30
+            price_change_pct = abs((recommended_price - current_price) / current_price * 100) if current_price > 0 else float('inf')
+            price_change_abs = abs(recommended_price - current_price)
+            
+            recommendation.financial_impact = {
+                "price_change_percent": (recommended_price - current_price) / current_price * 100 if current_price > 0 else 0,  # Store signed value
+                "price_change_amount": recommended_price - current_price,
+                "estimated_monthly_revenue_impact": revenue_impact,
+                "estimated_daily_sales": daily_sales_estimate
+            }
+
         # Determine risk level and approval threshold
         if price_change_pct >= self.guardrail_config["critical_risk_price_change"]:
             recommendation.risk_level = RiskLevel.CRITICAL
