@@ -28,10 +28,10 @@ class SemanticGuardrails:
         if self.openai_api_key:
             try:
                 self.llm = ChatOpenAI(
-                    model="gpt-3.5-turbo",  # Fast and cost-effective
+                    model="gpt-4o",         # High-quality model for better semantic understanding
                     temperature=0.0,        # Deterministic for guardrails
                     api_key=self.openai_api_key,
-                    timeout=5.0             # Quick timeout for guardrails
+                    timeout=10.0            # Slightly longer timeout for GPT-4o
                 )
             except Exception as e:
                 logger.warning(f"Could not initialize LLM for semantic guardrails: {e}")
@@ -161,6 +161,6 @@ Respond with ONLY:
         """Get status of semantic guardrails"""
         return {
             "llm_available": self.llm is not None,
-            "model": "gpt-3.5-turbo" if self.llm else None,
+            "model": "gpt-4o" if self.llm else None,
             "api_key_configured": bool(self.openai_api_key)
         } 
