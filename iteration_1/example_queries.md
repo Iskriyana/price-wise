@@ -50,7 +50,7 @@ I want to reduce the price of our premium Nike Jacket (APP10896) by 60% to drive
 
 To test these examples:
 
-1. Run the Streamlit app: `streamlit run streamlit_app.py`
+1. Run the Streamlit app: `streamlit run streamlit_app.py` (from the iteration_1 directory)
 2. Enter each query in the "Ask your pricing question" field
 3. Observe how the system handles each scenario
 4. Verify that dangerous requests are blocked/corrected

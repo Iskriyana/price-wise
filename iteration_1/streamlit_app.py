@@ -110,18 +110,15 @@ def render_query_interface():
                     
                     if price_change_abs > 0.01:
                         action = "Increase"
-                        delta_color = "inverse"
                     elif price_change_abs < -0.01:
                         action = "Decrease"
-                        delta_color = "normal"
                     else:
                         action = "No Change"
-                        delta_color = "off"
 
                     col1, col2, col3, col4, col5, col6 = st.columns(6)
                     col1.metric("Recommended Action", action)
                     col2.metric("Current Price", f"${product.current_price:,.2f}")
-                    col3.metric("Price Change", f"${price_change_abs:,.2f}", f"{price_change_pct:.1f}%", delta_color=delta_color)
+                    col3.metric("Price Change", f"${price_change_abs:,.2f}", f"{price_change_pct:.1f}%", delta_color="off")
                     
                     revenue_impact = 0
                     if rec.financial_impact:
@@ -200,12 +197,22 @@ def render_dashboard():
         if not rec.product_info: continue
         
         product = rec.product_info[0]
+        price_change = rec.recommended_price - product.current_price if rec.recommended_price else 0
+        
+        # Format price change with color
+        if price_change > 0.01:
+            price_change_display = f"+${price_change:.2f}"
+        elif price_change < -0.01:
+            price_change_display = f"-${abs(price_change):.2f}"
+        else:
+            price_change_display = "$0.00"
+        
         dashboard_data.append({
             "Product Name": product.item_name,
             "Product ID": product.item_id,
             "Current Price": f"${product.current_price:.2f}",
             "Recommended Price": f"${rec.recommended_price:.2f}" if rec.recommended_price else "N/A",
-            "Price Change": f"${rec.recommended_price - product.current_price:.2f}" if rec.recommended_price else "N/A",
+            "Price Change": price_change_display,
             "Risk Level": rec.risk_level.value.title(),
             "Required Approval": rec.approval_threshold.value.replace('_', ' ').title(),
             "Analysis": rec.reasoning
@@ -228,8 +235,17 @@ def render_dashboard():
             col1.text("Product Name"); col1.write(f"**{product.item_name}**")
             col2.text("Brand"); col2.write(f"**{product.item_name.split()[0]}**")
             col3.text("Current Price"); col3.write(f"**${product.current_price:.2f}**")
-            col4.text("Recommended Action"); col4.write(f"**{action}**")
-            col5.text("Recommended Price"); col5.write(f"**${rec.recommended_price:.2f}**")
+            
+            # Color-coded action and price change
+            if price_change_abs > 0.01:
+                col4.text("Recommended Action"); col4.write(f"**:green[{action}]**")
+                col5.text("Recommended Price"); col5.write(f"**:green[${rec.recommended_price:.2f}]** (:green[+${price_change_abs:.2f}])")
+            elif price_change_abs < -0.01:
+                col4.text("Recommended Action"); col4.write(f"**:red[{action}]**")
+                col5.text("Recommended Price"); col5.write(f"**:red[${rec.recommended_price:.2f}]** (:red[-${abs(price_change_abs):.2f}])")
+            else:
+                col4.text("Recommended Action"); col4.write(f"**{action}**")
+                col5.text("Recommended Price"); col5.write(f"**${rec.recommended_price:.2f}** (No Change)")
 
             revenue_impact = 0
             if rec.financial_impact:

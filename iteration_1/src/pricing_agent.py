@@ -25,6 +25,7 @@ from src.prompts import (
     PRICING_SYSTEM_PROMPT, create_user_prompt, create_full_context,
     create_fallback_reasoning, FALLBACK_RECOMMENDATIONS
 )
+from src.semantic_guardrails import SemanticGuardrails
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,9 @@ class EnhancedPricingRAGAgent:
         self.simple_retriever = SimplePricingRetriever()
         self.use_vector_store = True
         self.initialized = False
+        
+        # Initialize semantic guardrails
+        self.semantic_guardrails = SemanticGuardrails(openai_api_key)
         
         # In-memory storage for recommendations and approvals (in production, use database)
         self.active_recommendations: Dict[str, PricingRecommendation] = {}
@@ -68,7 +72,7 @@ class EnhancedPricingRAGAgent:
             # Initialize LLM
             if self.openai_api_key:
                 self.llm = ChatOpenAI(
-                    model="gpt-4o-mini",
+                    model="gpt-4o",
                     temperature=0.1,
                     openai_api_key=self.openai_api_key
                 )
@@ -110,12 +114,13 @@ class EnhancedPricingRAGAgent:
     
     def _validate_pricing_topic(self, query: PricingQuery) -> Optional[str]:
         """
-        Validate that the query is about pricing and not other topics.
+        Hybrid validation that the query is about pricing and not other topics.
+        Uses fast keyword checks first, then semantic validation for edge cases.
         Returns None if valid, error message if invalid.
         """
         query_text = query.query.lower()
         
-        # Define pricing-related keywords
+        # Step 1: Fast keyword-based validation for clear cases
         pricing_keywords = [
             'price', 'pricing', 'cost', 'margin', 'discount', 'markup', 'revenue',
             'profit', 'expensive', 'cheap', 'affordable', 'competitive', 'sale',
@@ -125,8 +130,7 @@ class EnhancedPricingRAGAgent:
             'optimize', 'adjust', 'increase', 'decrease', 'reduce', 'raise'
         ]
         
-        # Define non-pricing topics that should be rejected
-        # NOTE: Be very careful here - only reject topics that are clearly NOT about pricing
+        # Define clearly non-pricing topics for fast rejection
         non_pricing_keywords = [
             'weather forecast', 'temperature today', 'will it rain', 'snow tomorrow', 
             'sunny weather', 'cloudy skies',  # More specific weather terms
@@ -138,12 +142,12 @@ class EnhancedPricingRAGAgent:
             'programming tutorial', 'software installation', 'computer repair'
         ]
         
-        # Check for explicit non-pricing topics
+        # Fast rejection for obvious non-pricing topics
         for keyword in non_pricing_keywords:
             if keyword in query_text:
                 return f"I apologize, but I can only assist with pricing-related inquiries. Your question appears to be about '{keyword}', which is outside my scope of expertise. Please ask questions related to product pricing, cost analysis, or pricing recommendations."
         
-        # Check if query contains pricing-related content
+        # Count pricing indicators
         has_pricing_content = any(keyword in query_text for keyword in pricing_keywords)
         
         # Additional check for common pricing patterns
@@ -158,81 +162,111 @@ class EnhancedPricingRAGAgent:
         
         has_pricing_pattern = any(re.search(pattern, query_text) for pattern in pricing_patterns)
         
+        # Step 2: If strong pricing indicators, approve quickly
+        if has_pricing_content and has_pricing_pattern:
+            return None  # Clear pricing query
+        
+        # Step 3: If clear pricing content, approve
+        if has_pricing_content:
+            return None  # Likely pricing query
+        
+        # Step 4: For borderline cases, use semantic validation if available
+        if self.semantic_guardrails.is_available():
+            try:
+                semantic_result = self.semantic_guardrails.validate_pricing_topic_semantic(query.query)
+                if semantic_result is not None:
+                    # Semantic validation found it invalid
+                    return semantic_result
+                else:
+                    # Semantic validation found it valid
+                    return None
+            except Exception as e:
+                logger.warning(f"Semantic topic validation failed: {e}")
+                # Fall through to keyword-based decision
+        
+        # Step 5: Fallback keyword-based decision for cases without semantic validation
         if not (has_pricing_content or has_pricing_pattern):
             return "I specialize in pricing analysis and recommendations. Please ask questions related to product pricing, cost optimization, margin analysis, or pricing strategies. For other inquiries, please consult the appropriate specialist."
         
-        return None  # Valid pricing query
+        return None  # Default to valid if uncertain
     
     def _validate_fraudulent_pricing(self, query: PricingQuery) -> Optional[str]:
         """
-        Detect potentially fraudulent pricing requests.
-        Returns None if valid, error message if potentially fraudulent.
+        Hybrid fraud detection using fast keyword checks + semantic validation.
+        Returns None if safe, error message if potentially fraudulent.
         """
         query_text = query.query.lower()
         
-        # Extract potential price values from the query
-        price_patterns = [
-            # Zero pricing patterns (CRITICAL)
-            r'price.*to.*0\b',  # "price to 0", "set price to 0"
-            r'price.*at.*0\b',  # "price at 0", "price it at 0"
-            r'reduce.*price.*to.*0\b',  # "reduce price to 0"
-            r'make.*price.*0\b',  # "make price 0"
-            r'set.*price.*0\b',  # "set price 0"
-            r'\$0\b',  # "$0" (standalone)
-            r'\bzero\s*dollars?\b',  # "zero dollars"
-            r'price.*zero\b',  # "price zero", "price to zero"
-            r'cost.*zero\b',  # "cost zero"
-            
-            # Very low pricing patterns
-            r'\$0\.0[1-9]',  # $0.01 to $0.09
-            r'\$0\.1[0-9]',  # $0.10 to $0.19
-            r'\$0\.[2-4][0-9]',  # $0.20 to $0.49
-            r'0\.0[1-9]\s*dollars?',  # 0.01 to 0.09 dollars
-            r'0\.[1-4][0-9]\s*dollars?',  # 0.10 to 0.49 dollars
-            r'[1-4]?[0-9]\s*cents?',  # 1 to 49 cents
-            r'one\s*cent',  # "one cent"
-            r'penny',  # "penny"
-            r'almost\s*free',  # "almost free"
-            r'nearly\s*zero',  # "nearly zero"
-            r'minimal\s*price',  # "minimal price"
+        # Step 1: Fast keyword patterns for critical fraud detection
+        critical_price_patterns = [
+            # Zero pricing patterns (CRITICAL - immediate rejection)
+            r'price.*to.*0\b',  r'price.*at.*0\b',  r'reduce.*price.*to.*0\b',
+            r'make.*price.*0\b',  r'set.*price.*0\b',  r'\$0\b',
+            r'\bzero\s*dollars?\b',  r'price.*zero\b',  r'cost.*zero\b'
         ]
         
-        # Check for suspicious pricing patterns
-        for pattern in price_patterns:
+        # Critical phrases that are always fraudulent
+        critical_phrases = [
+            'price to 0', 'price at 0', 'price to zero', 'price at zero',
+            'reduce price to 0', 'reduce price to zero', 'set price to 0',
+            'set price to zero', 'make price 0', 'make price zero',
+            'price all items to 0', 'price everything to 0'
+        ]
+        
+        # Step 1a: Check for critical fraud patterns (immediate rejection)
+        for pattern in critical_price_patterns:
             if re.search(pattern, query_text):
-                return "I cannot process requests for extremely low pricing (under $0.50) as this may indicate an error or unauthorized activity. Such pricing decisions require special authorization and manual review. Please contact your supervisor or the pricing committee for assistance with exceptional pricing scenarios."
+                return "I cannot process requests for zero pricing as this may indicate an error or unauthorized activity. Such pricing decisions require special authorization and manual review. Please contact your supervisor or the pricing committee for assistance with exceptional pricing scenarios."
         
-        # Check for explicit requests to set very low prices
-        suspicious_phrases = [
-            # Zero price phrases (CRITICAL)
-            'price to 0',
-            'price at 0', 
-            'price to zero',
-            'price at zero',
-            'reduce price to 0',
-            'reduce price to zero',
-            'set price to 0',
-            'set price to zero',
-            'make price 0',
-            'make price zero',
-            'price all items to 0',
-            'price everything to 0',
-            
-            # Very low price phrases
-            'set price to 1 cent',
-            'make it 1 cent',
-            'price it at 1 cent',
-            'sell for 1 cent',
-            'charge 1 cent',
-            'cost 1 cent',
-            'practically free',
-            'give away',
-            'free of charge'
-        ]
-        
-        for phrase in suspicious_phrases:
+        for phrase in critical_phrases:
             if phrase in query_text:
                 return "I cannot assist with pricing requests that appear to be non-commercial or potentially unauthorized. Pricing decisions must align with business objectives and regulatory requirements. Please consult with management for guidance on exceptional pricing scenarios."
+        
+        # Step 2: Check for very low pricing patterns (but allow semantic validation)
+        low_price_patterns = [
+            r'\$0\.0[1-9]',  r'\$0\.1[0-9]',  r'\$0\.[2-4][0-9]',
+            r'0\.0[1-9]\s*dollars?',  r'0\.[1-4][0-9]\s*dollars?',
+            r'[1-4]?[0-9]\s*cents?',  r'one\s*cent',  r'penny',
+            r'almost\s*free',  r'nearly\s*zero',  r'minimal\s*price'
+        ]
+        
+        low_price_phrases = [
+            'set price to 1 cent', 'make it 1 cent', 'price it at 1 cent',
+            'sell for 1 cent', 'charge 1 cent', 'cost 1 cent',
+            'practically free', 'give away', 'free of charge'
+        ]
+        
+        # Check for low pricing patterns
+        has_low_price_pattern = any(re.search(pattern, query_text) for pattern in low_price_patterns)
+        has_low_price_phrase = any(phrase in query_text for phrase in low_price_phrases)
+        
+        # Step 3: If low pricing detected, use semantic validation if available
+        if (has_low_price_pattern or has_low_price_phrase) and self.semantic_guardrails.is_available():
+            try:
+                semantic_result = self.semantic_guardrails.validate_fraudulent_pricing_semantic(query.query)
+                if semantic_result is not None:
+                    # Semantic validation confirmed it's fraudulent
+                    return semantic_result
+                # If semantic validation says it's safe, continue processing
+                logger.info(f"Semantic validation approved query with low-price patterns: {query.query[:50]}...")
+            except Exception as e:
+                logger.warning(f"Semantic fraud validation failed: {e}")
+                # Fall back to keyword-based decision
+                if has_low_price_pattern or has_low_price_phrase:
+                    return "I cannot process requests for extremely low pricing (under $0.50) as this may indicate an error or unauthorized activity. Such pricing decisions require special authorization and manual review."
+        
+        # Step 4: Fallback for cases without semantic validation
+        elif has_low_price_pattern or has_low_price_phrase:
+            return "I cannot process requests for extremely low pricing (under $0.50) as this may indicate an error or unauthorized activity. Such pricing decisions require special authorization and manual review. Please contact your supervisor or the pricing committee for assistance with exceptional pricing scenarios."
+        
+        # Step 5: For borderline cases, use semantic validation if available
+        if self.semantic_guardrails.is_available():
+            try:
+                semantic_result = self.semantic_guardrails.validate_fraudulent_pricing_semantic(query.query)
+                return semantic_result  # Will be None if safe, error message if dangerous
+            except Exception as e:
+                logger.warning(f"Semantic fraud validation failed: {e}")
+                # Continue with keyword-based validation
         
         return None  # No fraudulent patterns detected
 
@@ -902,6 +936,9 @@ FINANCIAL IMPACT ANALYSIS (Elasticity-Based):
         pending_approvals = len([r for r in self.active_recommendations.values() if r.approval_status == ApprovalStatus.PENDING])
         active_recommendations = len(self.active_recommendations)
         
+        # Get semantic guardrails status
+        semantic_status = self.semantic_guardrails.get_status()
+        
         return SystemStatus(
             initialized=self.initialized,
             has_openai_key=bool(self.openai_api_key),
@@ -909,7 +946,8 @@ FINANCIAL IMPACT ANALYSIS (Elasticity-Based):
             data_summary=self.data_loader.get_products_summary() if self.initialized else {},
             vector_store_info=collection_info if self.initialized else {},
             pending_approvals=pending_approvals,
-            active_recommendations=active_recommendations
+            active_recommendations=active_recommendations,
+            semantic_guardrails_status=semantic_status
         )
 
 
